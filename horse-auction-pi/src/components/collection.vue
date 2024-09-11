@@ -117,8 +117,8 @@ export default {
       return `${days}d : ${hours}h : ${minutes}m : ${seconds}s`;
     },
     viewDetails(auctionId) {
-      // Navigate to the horse listing page for the selected auction
-      this.$router.push({ name: 'HorseListings', params: { id: auctionId } });
+    this.$router.push({ name: 'HorseListing', params: { id: auctionId } });
+
     }
   }
 };

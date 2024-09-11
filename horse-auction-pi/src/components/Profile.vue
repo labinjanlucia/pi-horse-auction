@@ -59,6 +59,7 @@ export default {
   },
   mounted() {
     this.fetchUserAuctions();  // Fetch auctions when component is mounted
+    this.startCountdown();
   },
   methods: {
     // Fetch auctions created by the logged-in user
@@ -113,8 +114,8 @@ export default {
       return `${days}d : ${hours}h : ${minutes}m : ${seconds}s`;
     },
     viewDetails(auctionId) {
-      this.$router.push({ name: 'HorseListings', params: { id: auctionId } });
-    }
+  this.$router.push({ name: 'HorseListing', params: { id: auctionId } });
+}
   }
 };
 </script>
