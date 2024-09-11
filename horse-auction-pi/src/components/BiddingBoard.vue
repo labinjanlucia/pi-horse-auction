@@ -28,18 +28,35 @@
               </p>
               <!-- View Details Button -->
               <button @click="viewDetails(auction.id)" class="btn btn-primary mb-2" :disabled="auction.timeRemaining <= 0">View Details</button>
-              <!-- Bid Now Button (disabled if auction has ended) -->
-              <button @click="placeBid(auction.id)" class="btn btn-success" :disabled="auction.timeRemaining <= 0">Bid Now</button>
+              <!-- Bid Now Button (opens the bidding modal) -->
+              <button @click="openBidModal(auction)" class="btn btn-success" :disabled="auction.timeRemaining <= 0">Bid Now</button>
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Bid Modal -->
+    <div v-if="showBidModal" class="bid-modal">
+      <div class="bid-modal-content">
+        <h3>{{ currentAuction.horseName }}</h3>
+        <p><strong>How much is your bid?</strong></p>
+        <div class="bid-control">
+          <button @click="decreaseBid">-{{ currentAuction.setIncrement }}</button>
+          <span>{{ currentBid }} {{ currency }}</span>
+          <button @click="increaseBid">+{{ currentAuction.setIncrement }}</button>
+        </div>
+        <p>Total Amount: {{ currentBid }} {{ currency }}</p>
+        <p>Direct bid - Your bid will be set immediately</p>
+        <button @click="placeBid" class="btn btn-primary">Place a direct bid of {{ currentBid }} {{ currency }}</button>
+        <button @click="closeBidModal" class="btn btn-secondary">Cancel</button>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { collection, getDocs } from 'firebase/firestore'; // Firestore functions
+import { collection, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore'; // Firestore functions
 import { db } from '@/firebase'; // Firebase Firestore instance
 
 export default {
@@ -47,6 +64,10 @@ export default {
   data() {
     return {
       auctions: [],  // Array to hold all the auctions
+      showBidModal: false, // Flag to show or hide the bidding modal
+      currentAuction: null, // The auction the user is bidding on
+      currentBid: 0, // The current bid the user will place
+      currency: 'eu', // The currency symbol (adjust as needed)
     };
   },
   computed: {
@@ -77,6 +98,55 @@ export default {
         this.startCountdown();
       } catch (error) {
         console.error('Error fetching auctions:', error);
+      }
+    },
+    // Open the bid modal and set the auction the user wants to bid on
+    openBidModal(auction) {
+      this.currentAuction = auction;
+      this.currentBid = auction.currentBid || auction.startingPrice;
+      this.showBidModal = true;
+    },
+    // Close the bid modal
+    closeBidModal() {
+      this.showBidModal = false;
+    },
+    // Increase the bid by the set increment
+    increaseBid() {
+      this.currentBid += this.currentAuction.setIncrement;
+    },
+    // Decrease the bid by the set increment, but ensure the bid doesn't go below the starting price
+    decreaseBid() {
+      const minimumBid = this.currentAuction.currentBid || this.currentAuction.startingPrice;
+      if (this.currentBid - this.currentAuction.setIncrement >= minimumBid) {
+        this.currentBid -= this.currentAuction.setIncrement;
+      }
+    },
+    // Place the bid and update Firestore
+    async placeBid() {
+      try {
+        const auctionDoc = doc(db, 'Auctions', this.currentAuction.id);
+
+        // Retrieve the current bid from Firestore to ensure consistency
+        const auctionSnapshot = await getDoc(auctionDoc);
+        const auctionData = auctionSnapshot.data();
+        const existingBid = auctionData.currentBid || auctionData.startingPrice;
+
+        // Calculate the new bid by adding the user's placed bid to the existing bid
+        const newBid = existingBid + (this.currentBid - existingBid);
+        const bidTime = new Date();
+
+
+        // Update Firestore with the new currentBid and lastBidPlacedAt
+        await updateDoc(auctionDoc, {
+          currentBid: newBid,  // Add the new bid to the current bid
+          lastBidPlacedAt: bidTime,  // Set last bid time to now
+          highestBidder: 'userID-placeholder' // Replace with actual user ID of the logged-in user
+        });
+
+        this.closeBidModal(); // Close the modal after placing the bid
+        await this.fetchAuctions();  // Refresh auction data after placing the bid to update all components
+      } catch (error) {
+        console.error('Error placing bid:', error);
       }
     },
     // Start real-time countdown for each auction
@@ -111,10 +181,6 @@ export default {
     viewDetails(auctionId) {
       this.$router.push({ name: "HorseListing", params: { id: auctionId } });
     },
-    // Navigate to the Bidding Page
-    placeBid(auctionId) {
-      this.$router.push({ name: "BidBoard", params: { id: auctionId } });
-    }
   },
   mounted() {
     this.fetchAuctions();  // Fetch auction data when the component is mounted
@@ -132,6 +198,49 @@ export default {
   }
 };
 </script>
+
+
+
+<!-- Add the following styles for the modal -->
+<style scoped>
+.bid-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.bid-modal-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.bid-control {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.bid-control button {
+  padding: 10px;
+  margin: 0 10px;
+  font-size: 20px;
+}
+
+span {
+  font-size: 24px;
+  font-weight: bold;
+}
+</style>
+
 
 <style scoped>
 /* Header Styling */
