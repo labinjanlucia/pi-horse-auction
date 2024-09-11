@@ -24,14 +24,15 @@
           <div class="card mb-3" v-for="auction in auctions" :key="auction.id">
             <div class="row g-0">
               <div class="col-md-4">
-                <img :src="auction.horsePictures" class="img-fluid rounded-start" alt="Horse Image">
+                <img :src="auction.horsePictures[0]" class="img-fluid rounded-start" alt="Horse Image">
               </div>
               <div class="col-md-8">
                 <div class="card-body">
                   <h5 class="card-title">ONLINE AUCTION</h5>
                   <p class="card-text"><strong>Horse Name:</strong> {{ auction.horseName }}</p>
                   <p class="card-text"><strong>Current Bid:</strong> ${{ auction.currentBid }}</p>
-                  <p class="card-text"><strong>Auction ends in:</strong> {{ auction.endAuction }}</p>
+                  <p class="card-text"><strong>Auction ends in:</strong> {{ formatDate(auction.endAuction) }}</p>
+                  <p class="card-text"><strong>Last Bid Placed At:</strong> {{ auction.lastBidPlacedAt ? formatDate(auction.lastBidPlacedAt) : 'No bids yet' }}</p>
                   <button @click="viewDetails(auction.id)" class="btn btn-primary">View Details</button>
                 </div>
               </div>
@@ -59,30 +60,60 @@ export default {
   },
   methods: {
     viewDetails(auctionId) {
-    this.$router.push({ name: 'HorseListing', params: { id: auctionId } });
-  },
+      this.$router.push({ name: 'HorseListing', params: { id: auctionId } });
+    },
     goToCollection() {
       this.$router.push({ name: 'collection' });
+    },
+    formatDate(dateString) {
+      const options = { year: 'numeric', month: 'long', day: 'numeric' };
+      return new Date(dateString).toLocaleDateString(undefined, options);
     },
     async fetchAuctions() {
       try {
         const querySnapshot = await getDocs(collection(db, "Auctions"));
         const auctionsData = [];
+        const today = new Date();
+
         querySnapshot.forEach((doc) => {
-          // Push each document into the auctions array with id and data
-          auctionsData.push({ id: doc.id, ...doc.data() });
+          const auction = doc.data();
+          // Convert startAuction and endAuction to Date objects
+          auction.startAuction = new Date(auction.startAuction);
+          auction.endAuction = new Date(auction.endAuction);
+          auction.lastBidPlacedAt = auction.lastBidPlacedAt ? new Date(auction.lastBidPlacedAt) : null;
+
+          // Only push auctions that are currently running (startAuction <= today)
+          if (auction.startAuction <= today) {
+            auctionsData.push({ id: doc.id, ...auction });
+          }
         });
-        this.auctions = auctionsData; // Assign fetched data to auctions
+
+        // Sort by the last bid placed date (most recent bids at the top)
+        auctionsData.sort((a, b) => {
+          const aBidTime = a.lastBidPlacedAt ? new Date(a.lastBidPlacedAt) : 0;
+          const bBidTime = b.lastBidPlacedAt ? new Date(b.lastBidPlacedAt) : 0;
+          return bBidTime - aBidTime;
+        });
+
+        this.auctions = auctionsData;
       } catch (error) {
         console.error("Error fetching auctions: ", error);
       }
-    }
+    },
+    // Call this function after each bid is placed
+    async updateAuctionsAfterBid() {
+      await this.fetchAuctions(); // Re-fetch and sort auctions after a bid is placed
+    },
   },
   created() {
     this.fetchAuctions(); // Fetch auction data when the component is created
   }
 };
+
 </script>
+
+
+
 
 <style>
 /* General Styling */
