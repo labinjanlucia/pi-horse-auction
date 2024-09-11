@@ -1,39 +1,50 @@
 <template>
-    <div class="auth-container">
-      <h2>Login</h2>
-      <hr class="divider">
-      <form @submit.prevent="handleLogin">
-        <div class="form-group">
-          <label for="email">Email</label>
-          <input type="email" v-model="email" id="email" required />
-        </div>
-        <div class="form-group">
-          <label for="password">Password</label>
-          <input type="password" v-model="password" id="password" required />
-        </div>
-        <button type="submit" class="btn btn-primary">Login</button>
-        <p>Don't have an account? <router-link to="/register">Register</router-link></p>
-      </form>
-    </div>
-  </template>
-  
-  <script>
-  export default {
-    data() {
-      return {
-        email: '',
-        password: ''
-      };
-    },
-    methods: {
-      handleLogin() {
-        // Simulate login (you can replace this with actual logic)
-        console.log('Logging in with', this.email, this.password);
-        this.$router.push({ name: 'Profile' }); // Redirect to profile after login
+  <div class="auth-container">
+    <h2>Login</h2>
+    <hr class="divider">
+    <form @submit.prevent="handleLogin">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" v-model="email" id="email" required />
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" v-model="password" id="password" required />
+      </div>
+      <button type="submit" class="btn btn-primary">Login</button>
+      <p>Don't have an account? <router-link to="/register">Register</router-link></p>
+    </form>
+  </div>
+</template>
+
+<script>
+import { auth } from '../firebase'; // Import Firebase auth
+import { signInWithEmailAndPassword } from 'firebase/auth'; // Import Firebase auth functions
+
+export default {
+  data() {
+    return {
+      email: '',
+      password: ''
+    };
+  },
+  methods: {
+    async handleLogin() {
+      try {
+        // Log in the user with Firebase
+        await signInWithEmailAndPassword(auth, this.email, this.password);
+        alert('Login successful!');
+
+        // Redirect to the profile page after successful login
+        this.$router.push({ name: 'Profile' });
+      } catch (error) {
+        alert(`Error: ${error.message}`);
       }
     }
-  };
-  </script>
+  }
+};
+</script>
+
   
   <style scoped>
   .auth-container {

@@ -1,50 +1,62 @@
 <template>
-    <div class="auth-container">
-      <h2>Register</h2>
-      <hr class="divider">
-      <form @submit.prevent="handleRegister">
-        <div class="form-group">
-          <label for="email">Email</label>
-          <input type="email" v-model="email" id="email" required />
-        </div>
-        <div class="form-group">
-          <label for="password">Password</label>
-          <input type="password" v-model="password" id="password" required />
-        </div>
-        <div class="form-group">
-          <label for="confirmPassword">Confirm Password</label>
-          <input type="password" v-model="confirmPassword" id="confirmPassword" required />
-        </div>
-        <button type="submit" class="btn btn-primary">Register</button>
-  
-        <!-- New text for users that already have an account -->
-        <p>Already have an account? <router-link to="/login">Login</router-link></p>
-      </form>
-    </div>
-  </template>
-  
-  <script>
-  export default {
-    data() {
-      return {
-        email: '',
-        password: '',
-        confirmPassword: '',
-      };
-    },
-    methods: {
-      handleRegister() {
-        if (this.password !== this.confirmPassword) {
-          alert('Passwords do not match');
-          return;
-        }
-        // Handle registration logic here
-        console.log('Registering with', this.email, this.password);
-        this.$router.push({ name: 'Profile' }); // Redirect to profile after registration
+  <div class="auth-container">
+    <h2>Register</h2>
+    <hr class="divider">
+    <form @submit.prevent="handleRegister">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" v-model="email" id="email" required />
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" v-model="password" id="password" required />
+      </div>
+      <div class="form-group">
+        <label for="confirmPassword">Confirm Password</label>
+        <input type="password" v-model="confirmPassword" id="confirmPassword" required />
+      </div>
+      <button type="submit" class="btn btn-primary">Register</button>
+
+      <!-- Link for users that already have an account -->
+      <p>Already have an account? <router-link to="/login">Login</router-link></p>
+    </form>
+  </div>
+</template>
+
+<script>
+import { auth } from '../firebase'; // Import Firebase auth
+import { createUserWithEmailAndPassword } from 'firebase/auth'; // Import Firebase auth functions
+
+export default {
+  data() {
+    return {
+      email: '',
+      password: '',
+      confirmPassword: '',
+    };
+  },
+  methods: {
+    async handleRegister() {
+      if (this.password !== this.confirmPassword) {
+        alert('Passwords do not match');
+        return;
+      }
+
+      try {
+        // Register the user with Firebase
+        await createUserWithEmailAndPassword(auth, this.email, this.password);
+        alert('Registration successful!');
+
+        // Redirect to the profile page after successful registration
+        this.$router.push({ name: 'Profile' });
+      } catch (error) {
+        alert(`Error: ${error.message}`);
       }
     }
-  };
-  </script>
+  }
+};
+</script>
+
   
   <style scoped>
   .auth-container {
