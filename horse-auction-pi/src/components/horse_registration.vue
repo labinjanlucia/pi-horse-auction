@@ -26,6 +26,23 @@
           <label for="color">Color:</label>
           <input type="text" v-model="form.color" id="color" required />
         </div>
+        <div class="form-group">
+          <label for="gender">Gender:</label>
+          <select v-model="form.gender" id="gender" required>
+            <option value="" disabled>Select Gender</option>
+            <option value="Mare">Mare</option>
+            <option value="Gelding">Gelding</option>
+            <option value="Stallion">Stallion</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="size">Size (cm):</label>
+          <input type="number" v-model="form.size" id="size" required />
+        </div>
+        <div class="form-group">
+          <label for="dob">Date of Birth:</label>
+          <input type="date" v-model="form.dob" id="dob" required />
+        </div>
 
         <!-- Horse Pictures Upload -->
         <div class="form-group">
@@ -113,6 +130,9 @@ export default {
         breed: "",
         age: "",
         color: "",
+        gender: "", // Added gender field
+        size: "",   // Added size field
+        dob: "",    // Added date of birth field
         startAuction: "",
         endAuction: "",
         startingPrice: 1,
@@ -139,13 +159,13 @@ export default {
         // Validate form
         if (!this.validateForm()) return;
 
-              // Get the current user
-      const user = auth.currentUser;
-      if (!user) {
-        console.error("User is not logged in.");
-        this.$router.push({ name: 'Login' });
-        return;
-      }
+        // Get the current user
+        const user = auth.currentUser;
+        if (!user) {
+          console.error("User is not logged in.");
+          this.$router.push({ name: 'Login' });
+          return;
+        }
 
         // Upload horse pictures
         const pictureUrls = await Promise.all(
@@ -163,6 +183,9 @@ export default {
           breed: this.form.breed,
           age: this.form.age,
           color: this.form.color,
+          gender: this.form.gender,      // Added gender
+          size: this.form.size,          // Added size
+          dob: this.form.dob,            // Added date of birth
           startAuction: this.form.startAuction,
           endAuction: this.form.endAuction,
           startingPrice: this.form.startingPrice,
@@ -174,7 +197,7 @@ export default {
           auctionOwner: user.uid,
           highestBidder: user.uid,
         });
-        
+
         // Show success popup
         this.showPopup = true;
       } catch (error) {
@@ -193,7 +216,6 @@ export default {
     confirmRegistration() {
       this.showPopup = false;
       this.$router.push({ name: 'Profile' });
-
     },
     cancelRegistration() {
       this.showPopup = false;
@@ -213,6 +235,7 @@ export default {
   }
 };
 </script>
+
 
   <style scoped>
   /* Header Styling */

@@ -57,7 +57,7 @@
 
 <script>
 import { collection, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore'; // Firestore functions
-import { db } from '@/firebase'; // Firebase Firestore instance
+import { auth, db } from '@/firebase'; // Firebase Firestore instance
 
 export default {
   name: "BiddingBoard",
@@ -140,7 +140,7 @@ export default {
         await updateDoc(auctionDoc, {
           currentBid: newBid,  // Add the new bid to the current bid
           lastBidPlacedAt: bidTime,  // Set last bid time to now
-          highestBidder: 'userID-placeholder' // Replace with actual user ID of the logged-in user
+          highestBidder: auth.currentUser.uid // Replace with actual user ID of the logged-in user
         });
 
         this.closeBidModal(); // Close the modal after placing the bid

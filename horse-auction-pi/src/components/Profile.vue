@@ -7,8 +7,38 @@
 
     <!-- Logout Button -->
     <div class="logout-button mt-4">
-      <button @click="logout" class="btn btn-outline-danger">Logout</button>
+      <button @click="logout" class="btn btn-outline-danger">Log out</button>
     </div>
+
+    <!-- Bidded Auctions Section -->
+    <section class="bidded-auctions mt-5">
+      <h2>Bidded Auctions</h2>
+      <div v-if="biddedAuctions.length > 0">
+        <div class="auction-card" v-for="(auction, index) in biddedAuctions" :key="index">
+          <div class="row g-0">
+            <div class="col-md-4">
+              <!-- Display the uploaded horse image -->
+              <img :src="auction.horsePictures[0]" class="img-fluid rounded-start" alt="Horse Image">
+            </div>
+            <div class="col-md-8">
+              <div class="card-body">
+                <!-- Display horse name -->
+                <h5 class="card-title">{{ auction.horseName }}</h5>
+                <p class="card-text"><strong>Start Bid:</strong> ${{ auction.startingPrice }}</p>
+                <p class="card-text"><strong>Current Bid:</strong> ${{ auction.currentBid }}</p>
+                <p class="card-text"><strong>Time Left:</strong> {{ countdown(auction.endAuction) }}</p>
+                <p class="card-text"><strong>Last Bid Placed At:</strong> {{ formatDate(auction.lastBidPlacedAt) }}</p>
+                <!-- View Details button -->
+                <button @click="viewDetails(auction.id)" class="btn btn-primary">View Details</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div v-else>
+        <p>You haven't placed any bids yet.</p>
+      </div>
+    </section>
 
     <!-- Your Auctions Section -->
     <section class="your-auctions mt-5">
@@ -26,7 +56,7 @@
                 <h5 class="card-title">{{ auction.horseName }}</h5>
 
                 <!-- Display the starting bid -->
-                <p class="card-text"><strong>Start Bid:</strong> ${{ auction.startingPrice }}</p>
+                <p class="card-text"><strong>Current Bid:</strong> ${{ auction.currentBid}}</p>
 
                 <!-- Display the countdown timer -->
                 <p class="card-text"><strong>Time Left:</strong> {{ auction.remainingTime }}</p>
@@ -54,11 +84,14 @@ import { collection, query, where, getDocs } from 'firebase/firestore';  // Fire
 export default {
   data() {
     return {
-      yourAuctions: []  // Array to hold the user's auctions
+      yourAuctions: [],
+      biddedAuctions: [] // Array to hold the user's auctions
     };
   },
   mounted() {
     this.fetchUserAuctions();  // Fetch auctions when component is mounted
+    this.fetchBiddedAuctions();
+    this.startCountdown();  // Start the countdown for real-time updates
   },
   methods: {
     // Start real-time countdown for each auction
@@ -70,8 +103,6 @@ export default {
         }));
       }, 1000);  // Update every second
     },
-
-
     // Fetch auctions created by the logged-in user
     async fetchUserAuctions() {
       try {
@@ -91,7 +122,7 @@ export default {
           ...doc.data(),
           remainingTime: this.countdown(doc.data().endAuction)  // Set initial remaining time
         }));
-        
+
         // Start the countdown once auctions are fetched
         this.startCountdown();
       } 
@@ -99,7 +130,6 @@ export default {
         console.error('Error fetching user auctions:', error);
       }
     },
-
     // Logout function
     async logout() {
       try {
@@ -109,7 +139,6 @@ export default {
         console.error('Logout failed:', error);
       }
     },
-
     // Calculate the countdown time
     countdown(endDate) {
       const end = new Date(endDate).getTime();
@@ -127,7 +156,28 @@ export default {
 
       return `${days}d : ${hours}h : ${minutes}m : ${seconds}s`;
     },
-   
+    // Add formatDate method
+    formatDate(date) {
+      if (!date) return 'No bids yet';
+      const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+      return new Date(date).toLocaleDateString(undefined, options);
+    },
+    async fetchBiddedAuctions() {
+      try {
+        const userId = auth.currentUser.uid;
+        const auctionsRef = collection(db, 'Auctions');
+        const q = query(auctionsRef, where('highestBidder', '==', userId));  // Query based on highestBidder
+        const querySnapshot = await getDocs(q);
+        console.log(querySnapshot)
+
+        this.biddedAuctions = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+      } catch (error) {
+        console.error('Error fetching bidded auctions:', error);
+      }
+    },
     // Navigate to the horse listing page
     viewDetails(auctionId) {
       this.$router.push({ name: 'HorseListing', params: { id: auctionId } });
@@ -135,6 +185,8 @@ export default {
   }
 };
 </script>
+
+
 
 
 <style scoped>
