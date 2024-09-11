@@ -29,7 +29,7 @@
                 <p class="card-text"><strong>Start Bid:</strong> ${{ auction.startingPrice }}</p>
 
                 <!-- Display the countdown timer -->
-                <p class="card-text"><strong>Time Left:</strong> {{ countdown(auction.endAuction) }}</p>
+                <p class="card-text"><strong>Time Left:</strong> {{ auction.remainingTime }}</p>
 
                 <!-- View Details button -->
                 <button @click="viewDetails(auction.id)" class="btn btn-primary">View Details</button>
@@ -59,9 +59,19 @@ export default {
   },
   mounted() {
     this.fetchUserAuctions();  // Fetch auctions when component is mounted
-    this.startCountdown();
   },
   methods: {
+    // Start real-time countdown for each auction
+    startCountdown() {
+      setInterval(() => {
+        this.yourAuctions = this.yourAuctions.map((auction) => ({
+          ...auction,
+          remainingTime: this.countdown(auction.endAuction),
+        }));
+      }, 1000);  // Update every second
+    },
+
+
     // Fetch auctions created by the logged-in user
     async fetchUserAuctions() {
       try {
@@ -79,15 +89,17 @@ export default {
         this.yourAuctions = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
-        })
-      );
-
+          remainingTime: this.countdown(doc.data().endAuction)  // Set initial remaining time
+        }));
+        
+        // Start the countdown once auctions are fetched
+        this.startCountdown();
       } 
       catch (error) {
         console.error('Error fetching user auctions:', error);
       }
-
     },
+
     // Logout function
     async logout() {
       try {
@@ -97,6 +109,8 @@ export default {
         console.error('Logout failed:', error);
       }
     },
+
+    // Calculate the countdown time
     countdown(endDate) {
       const end = new Date(endDate).getTime();
       const now = new Date().getTime();
@@ -113,9 +127,11 @@ export default {
 
       return `${days}d : ${hours}h : ${minutes}m : ${seconds}s`;
     },
+   
+    // Navigate to the horse listing page
     viewDetails(auctionId) {
-  this.$router.push({ name: 'HorseListing', params: { id: auctionId } });
-}
+      this.$router.push({ name: 'HorseListing', params: { id: auctionId } });
+    }
   }
 };
 </script>

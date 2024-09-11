@@ -32,7 +32,7 @@
                   <p class="card-text"><strong>Horse Name:</strong> {{ auction.horseName }}</p>
                   <p class="card-text"><strong>Current Bid:</strong> ${{ auction.currentBid }}</p>
                   <p class="card-text"><strong>Auction ends in:</strong> {{ auction.endAuction }}</p>
-                  <a href="#" class="btn btn-primary">View Details</a>
+                  <button @click="viewDetails(auction.id)" class="btn btn-primary">View Details</button>
                 </div>
               </div>
             </div>
@@ -58,6 +58,9 @@ export default {
     };
   },
   methods: {
+    viewDetails(auctionId) {
+    this.$router.push({ name: 'HorseListing', params: { id: auctionId } });
+  },
     goToCollection() {
       this.$router.push({ name: 'collection' });
     },

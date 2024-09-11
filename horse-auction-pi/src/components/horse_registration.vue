@@ -174,7 +174,7 @@ export default {
           auctionOwner: user.uid,
           highestBidder: user.uid,
         });
-
+        
         // Show success popup
         this.showPopup = true;
       } catch (error) {

@@ -11,21 +11,20 @@
         <!-- Iterate through the filtered running auctions and display each one as a card -->
         <div class="col-md-4" v-for="auction in runningAuctions" :key="auction.id">
           <div class="card mb-4">
-            <img :src="auction.horseImage" class="card-img-top" :alt="auction.horseName" />
+            <img :src="auction.horsePictures[0]" class="card-img-top" :alt="auction.horseName" />
             <div class="card-body">
               <h5 class="card-title">{{ auction.horseName }}</h5>
               <p class="card-text">
-                <strong>{{ auction.hasBid ? 'Current Bid:' : 'Starting Bid:' }}</strong>
-                ${{ auction.currentBid || auction.startingBid }}
+                <strong>{{ auction.currentBid ? 'Current Bid:' : 'Starting Bid:' }}</strong>
+                ${{ auction.currentBid || auction.startingPrice }}
               </p>
               <p class="card-text">
                 <strong>Auction Ends In:</strong> 
                 <span v-if="auction.timeRemaining > 0">{{ formatTime(auction.timeRemaining) }}</span>
                 <span v-else class="text-danger">This auction has ended</span>
               </p>
-              <!-- New: Display last bid placed time -->
-              <p v-if="auction.lastBidPlacedAt" class="card-text">
-                <strong>Last Bid Placed At:</strong> {{ formatDate(auction.lastBidPlacedAt) }}
+              <p class="card-text">
+                <strong>Last Bid Placed At:</strong> {{ formatDate(auction.lastBidPlacedAt || auction.startAuction) }}
               </p>
               <!-- View Details Button -->
               <button @click="viewDetails(auction.id)" class="btn btn-primary mb-2" :disabled="auction.timeRemaining <= 0">View Details</button>
@@ -40,51 +39,60 @@
 </template>
 
 <script>
+import { collection, getDocs } from 'firebase/firestore'; // Firestore functions
+import { db } from '@/firebase'; // Firebase Firestore instance
+
 export default {
   name: "BiddingBoard",
   data() {
     return {
-      auctions: [
-        {
-          id: 1,
-          horseName: "Fenix",
-          startingBid: 5000,
-          currentBid: null,
-          startDate: new Date('2024-09-10T00:00:00'), // Set auction start date
-          endDate: new Date('2024-12-30T23:59:59'), // Set auction end date
-          horseImage: "https://www.nzequestrian.org.nz/wp-content/uploads/Meg-Bisset-Freestyle-Twyst-Shout-winners-of-the-Country-TV-Pony-Grand-Prix-Photo-Credit-Elise-Ford-1-600x419.jpg",
-          hasBid: false,
-          timeRemaining: 0, // This will be updated with the actual time remaining
-          lastBidPlacedAt: new Date('2024-09-01T14:30:00'), // Example: no bid yet placed
-        },
-        {
-          id: 2,
-          horseName: "Carrisima PRIMA",
-          startingBid: 10000,
-          currentBid: 12000,
-          startDate: new Date('2025-01-10T00:00:00'), // Future auction, start date is in the future
-          endDate: new Date('2025-01-15T23:59:59'),
-          horseImage: "https://path-to-horse-image2.jpg",
-          hasBid: true,
-          timeRemaining: 0,
-          lastBidPlacedAt: null, // Example last bid date and time
-        },
-        // Add more auctions as needed
-      ],
+      auctions: [],  // Array to hold all the auctions
     };
   },
   computed: {
-    // Filter auctions that are currently running (startDate <= now and endDate > now)
+    // Filter auctions that are currently running (startAuction <= now and endAuction > now)
     runningAuctions() {
       const now = new Date();
-      return this.auctions.filter(auction => auction.startDate <= now && auction.endDate > now);
+      return this.auctions.filter(auction => auction.startAuction <= now && auction.endAuction > now);
     }
   },
   methods: {
-    // Method to calculate the time remaining (endDate - current date)
+    // Fetch auction data from Firestore
+    async fetchAuctions() {
+      try {
+        const auctionsRef = collection(db, 'Auctions');
+        const querySnapshot = await getDocs(auctionsRef);
+        // Map the Firestore query result to the auctions array and convert date strings to actual Date objects
+        this.auctions = querySnapshot.docs.map(doc => {
+          const auction = doc.data();
+          return {
+            id: doc.id,
+            ...auction,
+            startAuction: new Date(auction.startAuction),  // Convert startAuction string to Date
+            endAuction: new Date(auction.endAuction),      // Convert endAuction string to Date
+            timeRemaining: this.calculateTimeRemaining(new Date(auction.endAuction))
+          };
+        });
+        // Start countdown for each auction
+        this.startCountdown();
+      } catch (error) {
+        console.error('Error fetching auctions:', error);
+      }
+    },
+    // Start real-time countdown for each auction
+    startCountdown() {
+      this.timer = setInterval(() => {
+        this.auctions = this.auctions.map(auction => ({
+          ...auction,
+          timeRemaining: this.calculateTimeRemaining(auction.endAuction),
+        }));
+      }, 1000);  // Update every second
+    },
+    // Calculate the time remaining (endDate - current date)
     calculateTimeRemaining(endDate) {
-      const now = new Date();
-      return Math.max(Math.floor((endDate - now) / 1000), 0); // Return time in seconds or 0 if auction has ended
+      const now = new Date().getTime();
+      const end = new Date(endDate).getTime();
+      return Math.max(Math.floor((end - now) / 1000), 0);  // Return time in seconds or 0 if auction has ended
     },
     // Method to format the time into days, hours, minutes, seconds
     formatTime(seconds) {
@@ -100,19 +108,21 @@ export default {
       return new Date(date).toLocaleDateString(undefined, options);
     },
     // Navigate to the Horse Listing Page
-    viewDetails(horseId) {
-      this.$router.push({ name: "HorseListing", params: { id: horseId } });
+    viewDetails(auctionId) {
+      this.$router.push({ name: "HorseListing", params: { id: auctionId } });
     },
     // Navigate to the Bidding Page
-    placeBid(horseId) {
-      this.$router.push({ name: "BidBoard", params: { id: horseId } });
+    placeBid(auctionId) {
+      this.$router.push({ name: "BidBoard", params: { id: auctionId } });
     }
   },
   mounted() {
-    // Update the time remaining for each auction
+    this.fetchAuctions();  // Fetch auction data when the component is mounted
+
+    // Update the time remaining for each auction in real-time
     this.timer = setInterval(() => {
       this.auctions.forEach(auction => {
-        auction.timeRemaining = this.calculateTimeRemaining(auction.endDate);
+        auction.timeRemaining = this.calculateTimeRemaining(auction.endAuction);
       });
     }, 1000);
   },
