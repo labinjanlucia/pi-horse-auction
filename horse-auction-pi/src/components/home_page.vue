@@ -30,7 +30,7 @@
                 <div class="card-body">
                   <h5 class="card-title">ONLINE AUCTION</h5>
                   <p class="card-text"><strong>Horse Name:</strong> {{ auction.horseName }}</p>
-                  <p class="card-text"><strong>Current Bid:</strong> ${{ auction.Bid }}</p>
+                  <p class="card-text"><strong>Current Bid:</strong> ${{ auction.currentBid }}</p>
                   <p class="card-text"><strong>Auction ends in:</strong> {{ auction.endAuction }}</p>
                   <a href="#" class="btn btn-primary">View Details</a>
                 </div>
