@@ -174,9 +174,14 @@ export default {
     },
     // Method to format date and time for last bid
     formatDate(date) {
-      const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
-      return new Date(date).toLocaleDateString(undefined, options);
-    },
+  // Check if the date is a Firestore Timestamp and convert it to a JS Date
+  if (date && date.toDate) {
+    date = date.toDate();  // Convert Firestore Timestamp to JavaScript Date
+  }
+  
+  const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+  return new Date(date).toLocaleDateString(undefined, options);
+},
     // Navigate to the Horse Listing Page
     viewDetails(auctionId) {
       this.$router.push({ name: "HorseListing", params: { id: auctionId } });
