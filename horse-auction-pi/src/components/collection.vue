@@ -16,7 +16,7 @@
         <img :src="getHorseImage(auction)" alt="Horse Image" class="card-img-top">
         <div class="card-body">
           <h5 class="card-title">{{ auction.horseName }}</h5>
-          <p class="card-text"><strong>Start Bid:</strong> ${{ auction.startingPrice }}</p>
+          <p class="card-text"><strong>Current Bid:</strong> ${{ auction.currentBid }}</p>
           <p class="card-text"><strong>Time Left:</strong> {{ auction.remainingTime }}</p>
           <button @click="viewDetails(auction.id)" class="btn btn-primary">View Details</button>
         </div>
@@ -30,7 +30,7 @@
         <img :src="getHorseImage(auction)" alt="Horse Image" class="card-img-top">
         <div class="card-body">
           <h5 class="card-title">{{ auction.horseName }}</h5>
-          <p class="card-text"><strong>Start Bid:</strong> ${{ auction.startingPrice }}</p>
+          <p class="card-text"><strong>Starting Bid:</strong> ${{ auction.currentBid }}</p>
           <p class="card-text"><strong>Start Date:</strong> {{ auction.startAuction }}</p>
           <button @click="viewDetails(auction.id)" class="btn btn-primary">View Details</button>
         </div>

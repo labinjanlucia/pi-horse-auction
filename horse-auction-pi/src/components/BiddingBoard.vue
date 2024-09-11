@@ -8,7 +8,6 @@
     <!-- Auction Cards -->
     <div class="container mt-5">
       <div class="row">
-        <!-- Iterate through the filtered running auctions and display each one as a card -->
         <div class="col-md-4" v-for="auction in runningAuctions" :key="auction.id">
           <div class="card mb-4">
             <img :src="auction.horsePictures[0]" class="card-img-top" :alt="auction.horseName" />
@@ -19,16 +18,14 @@
                 ${{ auction.currentBid || auction.startingPrice }}
               </p>
               <p class="card-text">
-                <strong>Auction Ends In:</strong> 
+                <strong>Auction Ends In:</strong>
                 <span v-if="auction.timeRemaining > 0">{{ formatTime(auction.timeRemaining) }}</span>
                 <span v-else class="text-danger">This auction has ended</span>
               </p>
               <p class="card-text">
                 <strong>Last Bid Placed At:</strong> {{ formatDate(auction.lastBidPlacedAt || auction.startAuction) }}
               </p>
-              <!-- View Details Button -->
               <button @click="viewDetails(auction.id)" class="btn btn-primary mb-2" :disabled="auction.timeRemaining <= 0">View Details</button>
-              <!-- Bid Now Button (opens the bidding modal) -->
               <button @click="openBidModal(auction)" class="btn btn-success" :disabled="auction.timeRemaining <= 0">Bid Now</button>
             </div>
           </div>
@@ -49,12 +46,20 @@
         <p>Total Amount: {{ currentBid }} {{ currency }}</p>
         <p>Direct bid - Your bid will be set immediately</p>
         <button @click="placeBid" class="btn btn-primary">Place a direct bid of {{ currentBid }} {{ currency }}</button>
+        
+        <!-- Automatic Bidding Section -->
+        <h4>Automatic Bid</h4>
+        <p>Set an automatic bid - The system will bid on your behalf until the max bid is reached.</p>
+        <div class="bid-control">
+          <input type="number" v-model="maxAutoBid" placeholder="Enter maximum bid amount" />
+        </div>
+        <button @click="setAutoBid" class="btn btn-outline-primary">Set Automatic Bid</button>
+        
         <button @click="closeBidModal" class="btn btn-secondary">Cancel</button>
       </div>
     </div>
   </div>
 </template>
-
 <script>
 import { collection, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore'; // Firestore functions
 import { auth, db } from '@/firebase'; // Firebase Firestore instance
@@ -63,108 +68,135 @@ export default {
   name: "BiddingBoard",
   data() {
     return {
-      auctions: [],  // Array to hold all the auctions
-      showBidModal: false, // Flag to show or hide the bidding modal
-      currentAuction: null, // The auction the user is bidding on
-      currentBid: 0, // The current bid the user will place
-      currency: 'eu', // The currency symbol (adjust as needed)
+      auctions: [],
+      showBidModal: false,
+      currentAuction: null,
+      currentBid: 0,
+      maxAutoBid: 0, // To track the user's maximum automatic bid
+      currency: 'eu',
+      autoBidInterval: null, // To handle automatic bidding
     };
   },
   computed: {
-    // Filter auctions that are currently running (startAuction <= now and endAuction > now)
     runningAuctions() {
       const now = new Date();
       return this.auctions.filter(auction => auction.startAuction <= now && auction.endAuction > now);
     }
   },
   methods: {
-    // Fetch auction data from Firestore
     async fetchAuctions() {
       try {
         const auctionsRef = collection(db, 'Auctions');
         const querySnapshot = await getDocs(auctionsRef);
-        // Map the Firestore query result to the auctions array and convert date strings to actual Date objects
         this.auctions = querySnapshot.docs.map(doc => {
           const auction = doc.data();
           return {
             id: doc.id,
             ...auction,
-            startAuction: new Date(auction.startAuction),  // Convert startAuction string to Date
-            endAuction: new Date(auction.endAuction),      // Convert endAuction string to Date
-            timeRemaining: this.calculateTimeRemaining(new Date(auction.endAuction))
+            startAuction: new Date(auction.startAuction),
+            endAuction: new Date(auction.endAuction),
+            timeRemaining: this.calculateTimeRemaining(new Date(auction.endAuction)),
           };
         });
-        // Start countdown for each auction
         this.startCountdown();
       } catch (error) {
         console.error('Error fetching auctions:', error);
       }
     },
-    // Open the bid modal and set the auction the user wants to bid on
     openBidModal(auction) {
       this.currentAuction = auction;
       this.currentBid = auction.currentBid || auction.startingPrice;
+      this.maxAutoBid = 0; // Reset the automatic bid input
       this.showBidModal = true;
     },
-    // Close the bid modal
     closeBidModal() {
       this.showBidModal = false;
     },
-    // Increase the bid by the set increment
     increaseBid() {
       this.currentBid += this.currentAuction.setIncrement;
     },
-    // Decrease the bid by the set increment, but ensure the bid doesn't go below the starting price
     decreaseBid() {
       const minimumBid = this.currentAuction.currentBid || this.currentAuction.startingPrice;
       if (this.currentBid - this.currentAuction.setIncrement >= minimumBid) {
         this.currentBid -= this.currentAuction.setIncrement;
       }
     },
-    // Place the bid and update Firestore
     async placeBid() {
       try {
         const auctionDoc = doc(db, 'Auctions', this.currentAuction.id);
-
-        // Retrieve the current bid from Firestore to ensure consistency
         const auctionSnapshot = await getDoc(auctionDoc);
         const auctionData = auctionSnapshot.data();
         const existingBid = auctionData.currentBid || auctionData.startingPrice;
 
-        // Calculate the new bid by adding the user's placed bid to the existing bid
         const newBid = existingBid + (this.currentBid - existingBid);
         const bidTime = new Date();
 
-
-        // Update Firestore with the new currentBid and lastBidPlacedAt
         await updateDoc(auctionDoc, {
-          currentBid: newBid,  // Add the new bid to the current bid
-          lastBidPlacedAt: bidTime,  // Set last bid time to now
-          highestBidder: auth.currentUser.uid // Replace with actual user ID of the logged-in user
+          currentBid: newBid,
+          lastBidPlacedAt: bidTime,
+          highestBidder: auth.currentUser.uid,
         });
 
-        this.closeBidModal(); // Close the modal after placing the bid
-        await this.fetchAuctions();  // Refresh auction data after placing the bid to update all components
+        this.closeBidModal();
+        await this.fetchAuctions();
       } catch (error) {
         console.error('Error placing bid:', error);
       }
     },
-    // Start real-time countdown for each auction
+    // Set the maximum automatic bid for the user
+    async setAutoBid() {
+      try {
+        if (this.maxAutoBid <= this.currentBid) {
+          alert("Max bid must be greater than the current bid.");
+          return;
+        }
+
+        const auctionDoc = doc(db, 'Auctions', this.currentAuction.id);
+
+        await updateDoc(auctionDoc, {
+          autoBidder: auth.currentUser.uid,
+          maxAutoBid: this.maxAutoBid,
+        });
+
+        alert(`Automatic bid of max ${this.maxAutoBid} ${this.currency} has been set.`);
+        this.autoBid();
+      } catch (error) {
+        console.error('Error setting automatic bid:', error);
+      }
+    },
+    // Handle automatic bidding logic
+    async autoBid() {
+      this.autoBidInterval = setInterval(async () => {
+        const auctionDoc = doc(db, 'Auctions', this.currentAuction.id);
+        const auctionSnapshot = await getDoc(auctionDoc);
+        const auctionData = auctionSnapshot.data();
+        const existingBid = auctionData.currentBid || auctionData.startingPrice;
+
+        if (auctionData.autoBidder === auth.currentUser.uid && auctionData.maxAutoBid > existingBid) {
+          const newAutoBid = existingBid + 1;
+          await updateDoc(auctionDoc, {
+            currentBid: newAutoBid,
+            lastBidPlacedAt: new Date(),
+            highestBidder: auth.currentUser.uid,
+          });
+        } else if (auctionData.maxAutoBid <= existingBid) {
+          clearInterval(this.autoBidInterval); // Stop auto-bidding when max bid is reached
+        }
+      }, 3000); // Check every 3 seconds to place a bid
+    },
     startCountdown() {
       this.timer = setInterval(() => {
         this.auctions = this.auctions.map(auction => ({
           ...auction,
           timeRemaining: this.calculateTimeRemaining(auction.endAuction),
         }));
-      }, 1000);  // Update every second
+      }, 1000);
     },
-    // Calculate the time remaining (endDate - current date)
     calculateTimeRemaining(endDate) {
       const now = new Date().getTime();
       const end = new Date(endDate).getTime();
-      return Math.max(Math.floor((end - now) / 1000), 0);  // Return time in seconds or 0 if auction has ended
+      return Math.max(Math.floor((end - now) / 1000), 0);
     },
-    // Method to format the time into days, hours, minutes, seconds
     formatTime(seconds) {
       const days = Math.floor(seconds / (24 * 60 * 60));
       const hours = Math.floor((seconds % (24 * 60 * 60)) / (60 * 60));
@@ -172,25 +204,19 @@ export default {
       const sec = seconds % 60;
       return `${days}d : ${hours}h : ${minutes}m : ${sec}s`;
     },
-    // Method to format date and time for last bid
     formatDate(date) {
-  // Check if the date is a Firestore Timestamp and convert it to a JS Date
-  if (date && date.toDate) {
-    date = date.toDate();  // Convert Firestore Timestamp to JavaScript Date
-  }
-  
-  const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
-  return new Date(date).toLocaleDateString(undefined, options);
-},
-    // Navigate to the Horse Listing Page
+      if (date && date.toDate) {
+        date = date.toDate();
+      }
+      const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+      return new Date(date).toLocaleDateString(undefined, options);
+    },
     viewDetails(auctionId) {
-      this.$router.push({ name: "HorseListing", params: { id: auctionId } });
+      this.$router.push({ name: 'HorseListing', params: { id: auctionId } });
     },
   },
   mounted() {
-    this.fetchAuctions();  // Fetch auction data when the component is mounted
-
-    // Update the time remaining for each auction in real-time
+    this.fetchAuctions();
     this.timer = setInterval(() => {
       this.auctions.forEach(auction => {
         auction.timeRemaining = this.calculateTimeRemaining(auction.endAuction);
@@ -198,9 +224,9 @@ export default {
     }, 1000);
   },
   beforeUnmount() {
-    // Clear the interval when the component is destroyed
     clearInterval(this.timer);
-  }
+    clearInterval(this.autoBidInterval); // Clear automatic bidding when the component is destroyed
+  },
 };
 </script>
 

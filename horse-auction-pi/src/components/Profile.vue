@@ -27,7 +27,7 @@
                 <p class="card-text"><strong>Start Bid:</strong> ${{ auction.startingPrice }}</p>
                 <p class="card-text"><strong>Current Bid:</strong> ${{ auction.currentBid }}</p>
                 <p class="card-text"><strong>Time Left:</strong> {{ countdown(auction.endAuction) }}</p>
-                <p class="card-text"><strong>Last Bid Placed At:</strong> {{ formatDate(auction.lastBidPlacedAt) }}</p>
+                
                 <!-- View Details button -->
                 <button @click="viewDetails(auction.id)" class="btn btn-primary">View Details</button>
               </div>
