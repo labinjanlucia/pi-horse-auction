@@ -5,66 +5,10 @@
       <h1>Profile</h1>
     </header>
 
-    <!-- User Information Section -->
-    <section class="user-info mt-4">
-      <h2>Your Information</h2>
-      <div class="form-group">
-        <label for="username">Username:</label>
-        <input 
-          type="text" 
-          id="username" 
-          v-model="editableUser.username" 
-          :disabled="!isEditing" 
-        />
-      </div>
-
-      <div class="form-group">
-        <label for="password">Password:</label>
-        <input 
-          type="password" 
-          id="password" 
-          v-model="editableUser.password" 
-          :disabled="!isEditing" 
-        />
-      </div>
-
-      <!-- Edit and Save Buttons -->
-      <div class="action-buttons">
-        <button v-if="!isEditing" @click="enableEdit" class="btn btn-primary">Edit Profile</button>
-        <button v-else @click="saveProfile" class="btn btn-success">Save</button>
-        <button v-if="isEditing" @click="cancelEdit" class="btn btn-danger">Cancel</button>
-      </div>
-
-      <!-- Logout Button -->
-      <div class="logout-button mt-4">
-        <button @click="logout" class="btn btn-outline-danger">Logout</button>
-      </div>
-    </section>
-
-    <!-- Bidded Auctions Section -->
-    <section class="bidded-auctions mt-4">
-      <h2>Bidded Auctions</h2>
-      <div v-if="biddedAuctions.length > 0">
-        <div class="auction-card" v-for="(auction, index) in biddedAuctions" :key="index">
-          <div class="row g-0">
-            <div class="col-md-4">
-              <img :src="auction.horseImage" class="img-fluid rounded-start" alt="Horse Image">
-            </div>
-            <div class="col-md-8">
-              <div class="card-body">
-                <h5 class="card-title">{{ auction.title }}</h5>
-                <p class="card-text"><strong>Horse Name:</strong> {{ auction.horseName }}</p>
-                <p class="card-text"><strong>Current Bid:</strong> ${{ auction.currentBid }}</p>
-                <p class="card-text"><strong>Auction ends in:</strong> {{ auction.timeRemaining }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div v-else>
-        <p>You have not placed any bids yet.</p>
-      </div>
-    </section>
+    <!-- Logout Button -->
+    <div class="logout-button mt-4">
+      <button @click="logout" class="btn btn-outline-danger">Logout</button>
+    </div>
 
     <!-- Your Auctions Section -->
     <section class="your-auctions mt-5">
@@ -74,7 +18,7 @@
           <div class="row g-0">
             <div class="col-md-4">
               <!-- Display the uploaded horse image -->
-              <img :src="auction.horsePictures[0].url" class="img-fluid rounded-start" alt="Horse Image">
+              <img :src="auction.horsePictures[0]" class="img-fluid rounded-start" alt="Horse Image">
             </div>
             <div class="col-md-8">
               <div class="card-body">
@@ -102,54 +46,55 @@
 </template>
 
 <script>
+import { signOut } from 'firebase/auth';  // Import Firebase signOut
+import { auth } from '@/firebase';  // Import Firebase auth
+import { db } from '@/firebase';  // Import Firestore database instance
+import { collection, query, where, getDocs } from 'firebase/firestore';  // Firestore functions
+
 export default {
   data() {
     return {
-      registeredHorses: [],
-      user: {
-        username: 'john_doe',
-        password: '********'
-      },
-      editableUser: {
-        username: '',
-        password: ''
-      },
-      isEditing: false,
-      biddedAuctions: [
-        {
-          title: "LIVE AUCTION - Zagreb, HR",
-          horseName: "Prima Carissima",
-          horseImage: "https://www.eurodressage.com/sites/default/files/styles/max_650x650/public/database-story-thumb/2021-07/auctions_blackhorses_noirbh.jpg?itok=1qjtLYPB",
-          currentBid: 8250,
-          timeRemaining: "23d 7h 29m 41s"
-        }
-      ],
-      yourAuctions: []
+      yourAuctions: []  // Array to hold the user's auctions
     };
   },
-  mounted(){
-    const savedHorses = JSON.parse(localStorage.getItem("registeredHorses"));
-    if (savedHorses) {
-      this.yourAuctions = savedHorses;
-    }
+  mounted() {
+    this.fetchUserAuctions();  // Fetch auctions when component is mounted
   },
   methods: {
-    enableEdit() {
-      this.isEditing = true;
-      this.editableUser = { ...this.user };
+    // Fetch auctions created by the logged-in user
+    async fetchUserAuctions() {
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          this.$router.push({ name: 'Login' });  // If not logged in, redirect to login
+          return;
+        }
+
+        // Query Firestore to get auctions created by the current user
+        const auctionsRef = collection(db, 'Auctions');
+        const q = query(auctionsRef, where('auctionOwner', '==', user.uid));  // Filter by auctionOwnerId
+        const querySnapshot = await getDocs(q);
+        // Map the query result to the yourAuctions array
+        this.yourAuctions = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })
+      );
+
+      } 
+      catch (error) {
+        console.error('Error fetching user auctions:', error);
+      }
+
     },
-    saveProfile() {
-      this.user = { ...this.editableUser };
-      this.isEditing = false;
-      console.log('Profile updated:', this.user);
-    },
-    cancelEdit() {
-      this.isEditing = false;
-      this.editableUser = { ...this.user };
-    },
-    logout() {
-      console.log('User logged out');
-      this.$router.push({ name: 'Login' });
+    // Logout function
+    async logout() {
+      try {
+        await signOut(auth);  // Log out the user using Firebase Authentication
+        this.$router.push({ name: 'Login' });  // Redirect to the login page after logging out
+      } catch (error) {
+        console.error('Logout failed:', error);
+      }
     },
     countdown(endDate) {
       const end = new Date(endDate).getTime();
@@ -170,12 +115,10 @@ export default {
     viewDetails(auctionId) {
       this.$router.push({ name: 'HorseListings', params: { id: auctionId } });
     }
-  },
-  created() {
-    this.editableUser = { ...this.user };
   }
 };
 </script>
+
 
 <style scoped>
 .profile-container {
