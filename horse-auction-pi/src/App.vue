@@ -1,18 +1,34 @@
 <template>
-  <img alt="Vue logo" src="./assets/logo.png">
-  <HelloWorld msg="Welcome to Your Vue.js App"/>
+  <div id="app">
+  <Navbar /> 
+  <!-- <horse_registration/> -->
+  
+    <router-view />  
+  </div>
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
+import { registerRuntimeCompiler } from 'vue';
+import Navbar from './components/Appnavbar.vue';  // Ensure this path is correct
+// import Register_login from './components/register_login.vue';
+// import home_page from './components/home_page.vue';
+// import info_page from './components/info_page.vue';
+// import horse_registration from  './components/horse_registration.vue';
+// import collection from './components/collection.vue';
+//import HorseListing from './components/horse_lisitng.vue';
+
 
 export default {
   name: 'App',
   components: {
-    HelloWorld
+    Navbar,
+    
+
+    
   }
-}
+};
 </script>
+
 
 <style>
 #app {
@@ -21,6 +37,5 @@ export default {
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #2c3e50;
-  margin-top: 60px;
 }
 </style>

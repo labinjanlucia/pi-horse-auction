@@ -1,3 +1,30 @@
 # Horse auction site
 ---
 Autor: Lucia Labinjan
+---
+- Navbar
+    - Collection of links to other parts of the website
+- Home page
+    - List of auction cards
+- Auction cards
+    - Timing which is determined by if it is active or not
+    - Title (izvadi se iz baze)
+    - Locations (izvadi se iz baze, ako stignem mogu staviti maps api da pokaze)
+    - Start i end dates (izvadi se iz baze)
+    - Auction ends in (izvadi end date iz baze i oduzme trenutni datetime i updatea se svake sekunde)
+    - Link when you click the card it takes you to the horses board
+- Horse board (sve ide iz baze za taj id)
+    - Horse name
+    - Images of horse
+    - Horse statistics
+    - Slika family tree
+    - Description
+    - Current price
+    - Bid button (opens popup to bid which is updated constantly and displays the current leading bidder)
+- Horse registration page
+    - Input data about horse 
+    - Set starting bid
+    - Set increments for bid
+    - Send to database so everyone sees it
+- Registration and log in page 
+- Page for contact information of bids you sold/bought koji linka na card konja relevantnog
