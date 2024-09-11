@@ -1,6 +1,5 @@
 <template>
   <div id="homepage">
-   
     <!-- Main Section -->
     <section class="main-section text-center">
       <div class="bg-image">
@@ -18,46 +17,29 @@
     <!-- Currently Running Section -->
     <section class="currently-running mt-5 mb-5">
       <div class="container">
-        <h2 class="text-center">Currently running</h2>
-        <div class="card">
-          <div class="row g-0">
-            <div class="col-md-4">
-              <img src="https://www.nzequestrian.org.nz/wp-content/uploads/Meg-Bisset-Freestyle-Twyst-Shout-winners-of-the-Country-TV-Pony-Grand-Prix-Photo-Credit-Elise-Ford-1-600x419.jpg" class="img-fluid rounded-start" alt="Horse Image">
-            </div>
-            <div class="col-md-8">
-              <div class="card-body">
-                <h5 class="card-title">ONLINE AUCTION</h5>
-                <p class="card-text"><strong>Horse Name:</strong>Fenix</p>
-                <p class="card-text"><strong>Current Bid:</strong> $5,000</p>
-                <p class="card-text"><strong>Auction ends in:</strong> 6d : 3h : 25m : 31s</p>
-                <a href="#" class="btn btn-primary">View Details</a>
+        <h2 class="text-center">Currently Running</h2>
+
+        <!-- Auction Cards -->
+        <div v-if="auctions.length">
+          <div class="card mb-3" v-for="auction in auctions" :key="auction.id">
+            <div class="row g-0">
+              <div class="col-md-4">
+                <img :src="auction.horsePictures" class="img-fluid rounded-start" alt="Horse Image">
+              </div>
+              <div class="col-md-8">
+                <div class="card-body">
+                  <h5 class="card-title">ONLINE AUCTION</h5>
+                  <p class="card-text"><strong>Horse Name:</strong> {{ auction.horseName }}</p>
+                  <p class="card-text"><strong>Current Bid:</strong> ${{ auction.Bid }}</p>
+                  <p class="card-text"><strong>Auction ends in:</strong> {{ auction.endAuction }}</p>
+                  <a href="#" class="btn btn-primary">View Details</a>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </section>
-
-    <!-- Future Auctions Section -->
-    <section class="future-auctions mt-5 mb-5">
-      <div class="container">
-        <h2 class="text-center">Future Auctions</h2>
-        <div class="card">
-          <div class="row g-0">
-            <div class="col-md-4">
-              <img src="https://www.eurodressage.com/sites/default/files/styles/max_650x650/public/database-story-thumb/2021-07/auctions_blackhorses_noirbh.jpg?itok=1qjtLYPB" class="img-fluid rounded-start" alt="Horse Image">
-            </div>
-            <div class="col-md-8">
-              <div class="card-body">
-                <h5 class="card-title">UPCOMING AUCTION</h5>
-                <p class="card-text"><strong>Horse Name:</strong>Carrisima PRIMA</p>
-                <p class="card-text"><strong>Starting Bid:</strong> $10,000</p>
-                <p class="card-text"><strong>Auction starts on:</strong> 15.04.2024</p>
-                <!-- Button to navigate to Horse Listing -->
-                <button @click="viewDetails(auction.id)" class="btn btn-primary">View Details</button>
-              </div>
-            </div>
-          </div>
+        <div v-else>
+          <p>No auctions currently running.</p>
         </div>
       </div>
     </section>
@@ -65,13 +47,36 @@
 </template>
 
 <script>
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../firebase"; // Import the Firestore database
+
 export default {
   name: "HomePage",
+  data() {
+    return {
+      auctions: [] // Holds the auction data from Firebase
+    };
+  },
   methods: {
     goToCollection() {
-      // Navigate to the Collection Page
       this.$router.push({ name: 'collection' });
+    },
+    async fetchAuctions() {
+      try {
+        const querySnapshot = await getDocs(collection(db, "Auctions"));
+        const auctionsData = [];
+        querySnapshot.forEach((doc) => {
+          // Push each document into the auctions array with id and data
+          auctionsData.push({ id: doc.id, ...doc.data() });
+        });
+        this.auctions = auctionsData; // Assign fetched data to auctions
+      } catch (error) {
+        console.error("Error fetching auctions: ", error);
+      }
     }
+  },
+  created() {
+    this.fetchAuctions(); // Fetch auction data when the component is created
   }
 };
 </script>

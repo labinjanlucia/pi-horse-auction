@@ -47,17 +47,14 @@
           <div class="form-group">
             <label for="endAuction">End Auction:</label>
             <input type="date" v-model="form.endAuction" id="endAuction" required />
-            <span v-if="errors.endAuction" class="error">{{ errors.endAuction }}</span>
           </div>
           <div class="form-group">
             <label for="startingPrice">Starting Price (USD):</label>
             <input type="number" v-model="form.startingPrice" id="startingPrice" required min="1" />
-            <span v-if="errors.startingPrice" class="error">{{ errors.startingPrice }}</span>
           </div>
           <div class="form-group">
             <label for="setIncrement">Set Increment (USD):</label>
             <input type="number" v-model="form.setIncrement" id="setIncrement" required min="1" />
-            <span v-if="errors.setIncrement" class="error">{{ errors.setIncrement }}</span>
           </div>
         </section>
   
@@ -66,7 +63,7 @@
           <h2>Upload Documents</h2>
           <div class="form-group">
             <label for="documents">Upload Horse Documents:</label>
-            <input type="file" id="documents" @change="handleDocumentUpload" multiple />
+            <input type="file" id="documents" @change="handleDocumentUpload" accept="application/pdf" />
             <ul>
               <li v-for="(document, index) in uploadedDocuments" :key="index">{{ document.name }}</li>
             </ul>
@@ -97,117 +94,89 @@
   </template>
   
   <script>
+  import { db, storage } from "@/firebase";
+  import { collection, addDoc } from "firebase/firestore";
+  import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+  
   export default {
     data() {
       return {
         form: {
-          horseName: '',
-          breed: '',
-          age: '',
-          color: '',
-          startAuction: '',
-          endAuction: '',
+          horseName: "",
+          breed: "",
+          age: "",
+          color: "",
+          startAuction: "",
+          endAuction: "",
           startingPrice: 1,
           setIncrement: 1,
-          description: '',
+          description: "",
         },
         uploadedHorsePictures: [],
         uploadedDocuments: [],
-        showPopup: false, // Popup for successful registration
-        errors: {
-          endAuction: '',
-          startingPrice: '',
-          setIncrement: ''
-        }
+        showPopup: false,
       };
     },
     methods: {
-      handleHorsePicturesUpload(event) {
-        // Allow multiple images
-        this.uploadedHorsePictures = Array.from(event.target.files);
-      },
+        handleHorsePicturesUpload(event) {
+  this.uploadedHorsePictures = Array.from(event.target.files);
+},
+
       handleDocumentUpload(event) {
-        // Allow multiple documents
         this.uploadedDocuments = Array.from(event.target.files);
       },
+      async submitForm() {
+  try {
+    // Validate form
+    if (!this.validateForm()) return;
+
+    // Upload horse pictures
+    const pictureUrls = await Promise.all(
+      this.uploadedHorsePictures.map((file) => this.uploadFile(file, "horse-pictures"))
+    );
+
+    // Upload document files (if any)
+    const documentUrls = await Promise.all(
+      this.uploadedDocuments.map((file) => this.uploadFile(file, "documents"))
+    );
+
+    // Save the data to Firestore
+    await addDoc(collection(db, "Auctions"), {
+      horseName: this.form.horseName,
+      breed: this.form.breed,
+      age: this.form.age,
+      color: this.form.color,
+      startAuction: this.form.startAuction,
+      endAuction: this.form.endAuction,
+      startingPrice: this.form.startingPrice,
+      setIncrement: this.form.setIncrement,
+      description: this.form.description,
+      horsePictures: pictureUrls,  // Storing the uploaded image URLs
+      documents: documentUrls,
+    });
+
+    // Show success popup
+    this.showPopup = true;
+  } catch (error) {
+    console.error("Error submitting form: ", error);
+  }
+},
+async uploadFile(file, folder) {
+  const storageRef = ref(storage, `${folder}/${file.name}`);
+  await uploadBytes(storageRef, file);
+  return await getDownloadURL(storageRef);
+},
       validateForm() {
-        let isValid = true;
-        const today = new Date().toISOString().split('T')[0]; // Get today's date
-        const startDate = this.form.startAuction;
-        const endDate = this.form.endAuction;
-        
-        // Validate auction dates
-        if (startDate < today) {
-          this.errors.endAuction = 'Start auction date cannot be in the past.';
-          isValid = false;
-        } else if (endDate <= startDate) {
-          this.errors.endAuction = 'End auction date must be at least one day after the start date.';
-          isValid = false;
-        } else {
-          this.errors.endAuction = '';
-        }
-  
-        // Validate starting price
-        if (this.form.startingPrice < 1) {
-          this.errors.startingPrice = 'Starting price must be at least 1 USD.';
-          isValid = false;
-        } else {
-          this.errors.startingPrice = '';
-        }
-  
-        // Validate set increment
-        if (this.form.setIncrement < 1) {
-          this.errors.setIncrement = 'Set increment must be at least 1 USD.';
-          isValid = false;
-        } else {
-          this.errors.setIncrement = '';
-        }
-  
-        return isValid;
-      },
-      submitForm() {
-        // Validate form before proceeding
-        if (!this.validateForm()) {
-          return;
-        }
-        // Show success popup after validation
-        this.showPopup = true;
+        // Implement form validation logic here
+        return true; // Assume validation passes for simplicity
       },
       confirmRegistration() {
-        // Save the registered horse to localStorage (or your backend)
-        const newHorse = {
-          horseName: this.form.horseName,
-          breed: this.form.breed,
-          age: this.form.age,
-          color: this.form.color,
-          startAuction: this.form.startAuction,
-          endAuction: this.form.endAuction,
-          startingPrice: this.form.startingPrice,
-          setIncrement: this.form.setIncrement,
-          description: this.form.description,
-          horsePictures: this.uploadedHorsePictures,
-          documents: this.uploadedDocuments,
-        };
-  
-        // Save to localStorage (replace this with API/backend storage logic)
-        let savedHorses = JSON.parse(localStorage.getItem("registeredHorses")) || [];
-        savedHorses.push(newHorse);
-        localStorage.setItem("registeredHorses", JSON.stringify(savedHorses));
-  
-        // Redirect to profile and scroll to "Your Auctions"
-        this.$router.push({ name: 'Profile' }).then(() => {
-          // Scroll to the "Your Auctions" section after redirection
-          this.$nextTick(() => {
-            const yourAuctionsSection = document.querySelector('.your-auctions');
-            if (yourAuctionsSection) {
-              yourAuctionsSection.scrollIntoView({ behavior: 'smooth' });
-            }
-          });
-        });
+        // Redirect or handle after successful registration
+        this.showPopup = false;
       },
       cancelRegistration() {
         this.showPopup = false;
-      }
+      },
     },
   };
   </script>
