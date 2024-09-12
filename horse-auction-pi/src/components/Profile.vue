@@ -95,7 +95,7 @@
 import { signOut } from 'firebase/auth';  // Import Firebase signOut
 import { auth } from '@/firebase';  // Import Firebase auth
 import { db } from '@/firebase';  // Import Firestore database instance
-import { collection, query, where, getDocs } from 'firebase/firestore';  // Firestore functions
+import { collection, query, where, getDocs, getDoc, doc } from 'firebase/firestore';  // Firestore functions
 
 export default {
   data() {
@@ -180,21 +180,30 @@ export default {
       return new Date(date).toLocaleDateString(undefined, options);
     },
     async fetchBiddedAuctions() {
-      try {
-        const userId = auth.currentUser.uid;
-        const auctionsRef = collection(db, 'Auctions');
-        const q = query(auctionsRef, where('highestBidder', '==', userId));  // Query based on highestBidder
-        const querySnapshot = await getDocs(q);
-        console.log(querySnapshot)
+  try {
+    const userId = auth.currentUser.uid;
+    const bidderDocRef = doc(db, 'bidders', userId);
+    const bidderDoc = await getDoc(bidderDocRef);
 
-        this.biddedAuctions = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-      } catch (error) {
-        console.error('Error fetching bidded auctions:', error);
-      }
-    },
+    if (bidderDoc.exists()) {
+      const { auctionIds } = bidderDoc.data();
+
+      // Now fetch the auction data for each auction ID in auctionIds
+      const auctionsRef = collection(db, 'Auctions');
+      const auctionsQuery = query(auctionsRef, where('__name__', 'in', auctionIds)); // Use the auctionIds to query auctions
+      const querySnapshot = await getDocs(auctionsQuery);
+
+      this.biddedAuctions = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+    } else {
+      console.log("No auctions found for this user.");
+    }
+  } catch (error) {
+    console.error('Error fetching bidded auctions:', error);
+  }
+},
     // Navigate to the horse listing page
     viewDetails(auctionId) {
       this.$router.push({ name: 'HorseListing', params: { id: auctionId } });

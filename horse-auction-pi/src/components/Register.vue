@@ -4,10 +4,6 @@
     <hr class="divider">
     <form @submit.prevent="handleRegister">
       <div class="form-group">
-        <label for="username">Username</label>
-        <input type="text" v-model="username" id="username" required />
-      </div>
-      <div class="form-group">
         <label for="email">Email</label>
         <input type="email" v-model="email" id="email" required />
       </div>
@@ -28,17 +24,15 @@
 </template>
 
 <script>
-import { auth, db } from '../firebase'; // Import Firebase auth and Firestore
-import { createUserWithEmailAndPassword } from 'firebase/auth'; // Firebase auth functions
-import { collection, addDoc } from 'firebase/firestore'; // Firestore functions
+import { auth } from '../firebase'; // Import Firebase auth
+import { createUserWithEmailAndPassword } from 'firebase/auth'; // Import Firebase auth functions
 
 export default {
   data() {
     return {
-      username: '', // Added field for username
       email: '',
       password: '',
-      confirmPassword: ''
+      confirmPassword: '',
     };
   },
   methods: {
@@ -49,17 +43,8 @@ export default {
       }
 
       try {
-        // Register the user with Firebase Authentication
-        const userCredential = await createUserWithEmailAndPassword(auth, this.email, this.password);
-        const userId = userCredential.user.uid; // Get the user ID
-
-        // Save user data to the "Users" collection in Firestore
-        await addDoc(collection(db, 'Users'), {
-          username: this.username, // Save the username
-          userId: userId, // Save the user ID
-          biddedAuctions: [] // Initialize biddedAuctions as an empty array
-        });
-
+        // Register the user with Firebase
+        await createUserWithEmailAndPassword(auth, this.email, this.password);
         alert('Registration successful!');
 
         // Redirect to the profile page after successful registration
@@ -71,7 +56,6 @@ export default {
   }
 };
 </script>
-
 
   
   <style scoped>

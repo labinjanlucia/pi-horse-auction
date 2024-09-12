@@ -1,5 +1,8 @@
 <template>
   <div id="collection" class="container">
+      
+    
+
     <!-- Auction Type Filter -->
     <div class="auction-type-filter mb-3">
       <label for="auctionType">Select Auction Type:</label>

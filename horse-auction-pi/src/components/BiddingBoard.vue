@@ -46,7 +46,7 @@
         <p>Total Amount: {{ currentBid }} {{ currency }}</p>
         <p>Direct bid - Your bid will be set immediately</p>
         <button @click="placeBid" class="btn btn-primary">Place a direct bid of {{ currentBid }} {{ currency }}</button>
-        
+
         <!-- Automatic Bidding Section -->
         <h4>Automatic Bid</h4>
         <p>Set an automatic bid - The system will bid on your behalf until the max bid is reached.</p>
@@ -54,14 +54,14 @@
           <input type="number" v-model="maxAutoBid" placeholder="Enter maximum bid amount" />
         </div>
         <button @click="setAutoBid" class="btn btn-outline-primary">Set Automatic Bid</button>
-        
+
         <button @click="closeBidModal" class="btn btn-secondary">Cancel</button>
       </div>
     </div>
   </div>
 </template>
 <script>
-import { collection, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore'; // Firestore functions
+import { collection, getDocs, doc, updateDoc, getDoc, arrayUnion, setDoc } from 'firebase/firestore'; // Firestore functions
 import { auth, db } from '@/firebase'; // Firebase Firestore instance
 
 export default {
@@ -128,22 +128,40 @@ export default {
         const auctionData = auctionSnapshot.data();
         const existingBid = auctionData.currentBid || auctionData.startingPrice;
 
+        // Calculate the new bid
         const newBid = existingBid + (this.currentBid - existingBid);
         const bidTime = new Date();
 
+        // Update Firestore with the new bid
         await updateDoc(auctionDoc, {
           currentBid: newBid,
           lastBidPlacedAt: bidTime,
-          highestBidder: auth.currentUser.uid,
+          highestBidder: auth.currentUser.uid, // Set the highest bidder
         });
 
-        this.closeBidModal();
-        await this.fetchAuctions();
+        // Now update the 'bidders' collection to track the auctions the user has bid on
+        const userId = auth.currentUser.uid;
+        const bidderDocRef = doc(db, 'bidders', userId);
+        const bidderDoc = await getDoc(bidderDocRef);
+
+        if (bidderDoc.exists()) {
+          // If the bidder document exists, update it by adding the auctionId (ensure no duplicates)
+          await updateDoc(bidderDocRef, {
+            auctionIds: arrayUnion(this.currentAuction.id), // Add auction ID if not already present
+          });
+        } else {
+          // If the bidder document doesn't exist, create it
+          await setDoc(bidderDocRef, {
+            auctionIds: [this.currentAuction.id], // Create with the current auction ID
+          });
+        }
+
+        this.closeBidModal(); // Close the modal after placing the bid
+        await this.fetchAuctions(); // Refresh auction data after placing the bid
       } catch (error) {
         console.error('Error placing bid:', error);
       }
-    },
-    // Set the maximum automatic bid for the user
+    },    // Set the maximum automatic bid for the user
     async setAutoBid() {
       try {
         if (this.maxAutoBid <= this.currentBid) {
