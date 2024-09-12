@@ -4,92 +4,100 @@
       <h1>Profile</h1>
     </header>
 
-    <!-- Display Current Username -->
-    <section class="username-section mt-4">
-      <h2>Username: {{ username }}</h2>
-      <div>
-        <button @click="showUsernameChange = !showUsernameChange" class="btn btn-outline-primary">
-          Change Username
-        </button>
-      </div>
-
-      <!-- Change Username Section -->
-      <div v-if="showUsernameChange" class="change-username mt-4">
-        <form @submit.prevent="changeUsername">
-          <div class="form-group">
-            <label for="newUsername">New Username:</label>
-            <input type="text" v-model="newUsername" id="newUsername" required />
-          </div>
-          <button type="submit" class="btn btn-primary">Update Username</button>
-        </form>
-      </div>
-    </section>
-
-    <!-- Logout Button -->
-    <div class="logout-button mt-4">
-      <button @click="logout" class="btn btn-outline-danger">Log out</button>
+    <!-- Loading State -->
+    <div v-if="loading" class="loading-indicator">
+      <p>Loading auctions...</p>
     </div>
 
-    <!-- Bidded Auctions Section -->
-    <section class="bidded-auctions mt-5">
-      <h2>Bidded Auctions</h2>
-      <div v-if="biddedAuctions.length > 0">
-        <div class="auction-card" v-for="(auction, index) in biddedAuctions" :key="index">
-          <div class="row g-0">
-            <div class="col-md-4">
-              <img :src="auction.horsePictures[0]" class="img-fluid rounded-start" alt="Horse Image">
-            </div>
-            <div class="col-md-8">
-              <div class="card-body">
-                <h5 class="card-title">{{ auction.horseName }}</h5>
-                <p class="card-text"><strong>Start Bid:</strong> ${{ auction.startingPrice }}</p>
-                <p class="card-text"><strong>Current Bid:</strong> ${{ auction.currentBid }}</p>
-                <p class="card-text">
-                  <strong v-if="new Date(auction.startAuction) <= today">Time Left:</strong> 
-                  <strong v-else>Start Date:</strong>
-                  <span v-if="new Date(auction.startAuction) <= today">{{ countdown(auction.endAuction) }}</span>
-                  <span v-else>{{ formatDate(auction.startAuction) }}</span>
-                </p>
-                <button @click="viewDetails(auction.id)" class="btn btn-primary">View Details</button>
-              </div>
-            </div>
-          </div>
+    <!-- Content after data has loaded -->
+    <div v-else>
+      <!-- Display Current Username -->
+      <section class="username-section mt-4">
+        <h2>Username: {{ username }}</h2>
+        <div>
+          <button @click="showUsernameChange = !showUsernameChange" class="btn btn-outline-primary">
+            Change Username
+          </button>
         </div>
-      </div>
-      <div v-else>
-        <p>You haven't placed any bids yet.</p>
-      </div>
-    </section>
 
-    <!-- Your Auctions Section -->
-    <section class="your-auctions mt-5">
-      <h2>Your Auctions</h2>
-      <div v-if="yourAuctions.length > 0">
-        <div class="auction-card" v-for="(auction, index) in yourAuctions" :key="index">
-          <div class="row g-0">
-            <div class="col-md-4">
-              <img :src="auction.horsePictures[0]" class="img-fluid rounded-start" alt="Horse Image">
+        <!-- Change Username Section -->
+        <div v-if="showUsernameChange" class="change-username mt-4">
+          <form @submit.prevent="changeUsername">
+            <div class="form-group">
+              <label for="newUsername">New Username:</label>
+              <input type="text" v-model="newUsername" id="newUsername" required />
             </div>
-            <div class="col-md-8">
-              <div class="card-body">
-                <h5 class="card-title">{{ auction.horseName }}</h5>
-                <p class="card-text"><strong>Current Bid:</strong> ${{ auction.currentBid }}</p>
-                <p class="card-text">
-                  <strong v-if="new Date(auction.startAuction) <= today">Time Left:</strong> 
-                  <strong v-else>Start Date:</strong>
-                  <span v-if="new Date(auction.startAuction) <= today">{{ countdown(auction.endAuction) }}</span>
-                  <span v-else>{{ formatDate(auction.startAuction) }}</span>
-                </p>
-                <button @click="viewDetails(auction.id)" class="btn btn-primary">View Details</button>
+            <button type="submit" class="btn btn-primary">Update Username</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Logout Button -->
+      <div class="logout-button mt-4">
+        <button @click="logout" class="btn btn-outline-danger">Log out</button>
+      </div>
+
+      <!-- Bidded Auctions Section -->
+      <section class="bidded-auctions mt-5">
+        <h2>Bidded Auctions</h2>
+        <div v-if="biddedAuctions.length > 0">
+          <div class="auction-card" v-for="(auction, index) in biddedAuctions" :key="index">
+            <div class="row g-0">
+              <div class="col-md-4">
+                <img :src="auction.horsePictures[0]" class="img-fluid rounded-start" alt="Horse Image">
+              </div>
+              <div class="col-md-8">
+                <div class="card-body">
+                  <h5 class="card-title">{{ auction.horseName }}</h5>
+                  <p class="card-text"><strong>Start Bid:</strong> ${{ auction.startingPrice }}</p>
+                  <p class="card-text"><strong>Current Bid:</strong> ${{ auction.currentBid }}</p>
+                  <p class="card-text">
+                    <strong v-if="new Date(auction.startAuction) <= today">Time Left:</strong> 
+                    <strong v-else>Start Date:</strong>
+                    <span v-if="new Date(auction.startAuction) <= today">{{ auction.remainingTime }}</span>
+                    <span v-else>{{ formatDate(auction.startAuction) }}</span>
+                  </p>
+                  <button @click="viewDetails(auction.id)" class="btn btn-primary">View Details</button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-      <div v-else>
-        <p>You haven't registered any horses yet.</p>
-      </div>
-    </section>
+        <div v-else>
+          <p>You haven't placed any bids yet.</p>
+        </div>
+      </section>
+
+      <!-- Your Auctions Section -->
+      <section class="your-auctions mt-5">
+        <h2>Your Auctions</h2>
+        <div v-if="yourAuctions.length > 0">
+          <div class="auction-card" v-for="(auction, index) in yourAuctions" :key="index">
+            <div class="row g-0">
+              <div class="col-md-4">
+                <img :src="auction.horsePictures[0]" class="img-fluid rounded-start" alt="Horse Image">
+              </div>
+              <div class="col-md-8">
+                <div class="card-body">
+                  <h5 class="card-title">{{ auction.horseName }}</h5>
+                  <p class="card-text"><strong>Current Bid:</strong> ${{ auction.currentBid }}</p>
+                  <p class="card-text">
+                    <strong v-if="new Date(auction.startAuction) <= today">Time Left:</strong> 
+                    <strong v-else>Start Date:</strong>
+                    <span v-if="new Date(auction.startAuction) <= today">{{ auction.remainingTime }}</span>
+                    <span v-else>{{ formatDate(auction.startAuction) }}</span>
+                  </p>
+                  <button @click="viewDetails(auction.id)" class="btn btn-primary">View Details</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div v-else>
+          <p>You haven't registered any horses yet.</p>
+        </div>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -102,22 +110,29 @@ import { collection, query, where, getDocs, getDoc, doc, updateDoc } from 'fireb
 export default {
   data() {
     return {
-      username: '',  // Store the current username
-      newUsername: '',  // New username input
-      showUsernameChange: false,  // Toggle for the change username section
+      username: '',
+      newUsername: '',
+      showUsernameChange: false,
       yourAuctions: [],
       biddedAuctions: [],
       today: new Date(),
+      loading: true, 
+      timer: null,
     };
   },
   async mounted() {
-    await this.fetchUsername();  // Fetch the username when the profile is loaded
-    this.fetchUserAuctions();  
-    this.fetchBiddedAuctions();
-    this.startCountdown();
+    // Wait for all data to be fetched before showing the UI
+    await this.fetchUsername(); 
+    await this.fetchUserAuctions();  
+    await this.fetchBiddedAuctions();
+    
+    this.startRealTimeCountdown(); // Start real-time countdown
+    this.loading = false; // Set loading to false after data has been fetched
+  },
+  beforeUnmount() {
+    if (this.timer) clearInterval(this.timer);
   },
   methods: {
-    // Fetch the username from Firestore
     async fetchUsername() {
       try {
         const userId = auth.currentUser.uid;
@@ -131,18 +146,15 @@ export default {
         console.error('Error fetching username:', error);
       }
     },
-    // Method to update the username
     async changeUsername() {
       try {
         const userId = auth.currentUser.uid;
         const userDocRef = doc(db, 'users', userId);
 
-        // Update username in Firestore
         await updateDoc(userDocRef, {
           username: this.newUsername,
         });
 
-        // Update the username in the Vue component
         this.username = this.newUsername;
         this.newUsername = '';
         this.showUsernameChange = false;
@@ -152,7 +164,6 @@ export default {
         console.error('Error updating username:', error);
       }
     },
-    // Other methods (fetchUserAuctions, fetchBiddedAuctions, startCountdown, logout, etc.)
     async fetchUserAuctions() {
       const userId = auth.currentUser.uid;
       const auctionsRef = collection(db, 'Auctions');
@@ -180,17 +191,30 @@ export default {
         }));
       }
     },
-    countdown(endDate) {
-      const end = new Date(endDate).getTime();
+    calculateTimeRemaining(endDate) {
       const now = new Date().getTime();
-      const timeLeft = end - now;
-      if (timeLeft < 0) return 'Auction has ended';
+      const end = new Date(endDate).getTime();
+      const timeLeft = Math.max(end - now, 0);
       const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
       const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
       return `${days}d : ${hours}h : ${minutes}m : ${seconds}s`;
     },
+    startRealTimeCountdown() {
+      // Update remainingTime for each auction every second
+      this.timer = setInterval(() => {
+        this.yourAuctions = this.yourAuctions.map(auction => ({
+          ...auction,
+          remainingTime: this.calculateTimeRemaining(auction.endAuction),
+        }));
+        this.biddedAuctions = this.biddedAuctions.map(auction => ({
+          ...auction,
+          remainingTime: this.calculateTimeRemaining(auction.endAuction),
+        }));
+      }, 1000);
+    },
+
     formatDate(date) {
       if (!date) return 'No bids yet';
       const options = { year: 'numeric', month: 'long', day: 'numeric' };
@@ -210,7 +234,6 @@ export default {
   },
 };
 </script>
-
 
 
 <style scoped>
