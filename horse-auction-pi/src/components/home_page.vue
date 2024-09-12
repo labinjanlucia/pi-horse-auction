@@ -4,7 +4,7 @@
     <!-- Main Section -->
     <section class="main-section text-center">
       <div class="bg-image">
-        <h1>HORSE AUCTION</h1>
+        <h1>HORSE AUCTION CENTER</h1>
         <p v-if="currentDisplayedAuction" class="auction-horse-name">{{ currentDisplayedAuction.horseName }}</p>
         <p>Auction ends in:</p>
         <div class="countdown">
