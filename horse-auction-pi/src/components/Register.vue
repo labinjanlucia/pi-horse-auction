@@ -4,6 +4,10 @@
     <hr class="divider">
     <form @submit.prevent="handleRegister">
       <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" v-model="username" id="username" required />
+      </div>
+      <div class="form-group">
         <label for="email">Email</label>
         <input type="email" v-model="email" id="email" required />
       </div>
@@ -17,19 +21,20 @@
       </div>
       <button type="submit" class="btn btn-primary">Register</button>
 
-      <!-- Link for users that already have an account -->
       <p>Already have an account? <router-link to="/login">Login</router-link></p>
     </form>
   </div>
 </template>
 
 <script>
-import { auth } from '../firebase'; // Import Firebase auth
-import { createUserWithEmailAndPassword } from 'firebase/auth'; // Import Firebase auth functions
+import { auth, db } from '../firebase'; // Import Firebase auth and Firestore
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { collection, doc, setDoc } from 'firebase/firestore'; // Import Firestore functions
 
 export default {
   data() {
     return {
+      username: '', // Username added
       email: '',
       password: '',
       confirmPassword: '',
@@ -43,11 +48,19 @@ export default {
       }
 
       try {
-        // Register the user with Firebase
-        await createUserWithEmailAndPassword(auth, this.email, this.password);
-        alert('Registration successful!');
+        // Register the user with Firebase Authentication
+        const userCredential = await createUserWithEmailAndPassword(auth, this.email, this.password);
+        const userId = userCredential.user.uid;
 
-        // Redirect to the profile page after successful registration
+        // Store user data in Firestore
+        await setDoc(doc(db, "users", userId), {
+          username: this.username, // Save the username
+          email: this.email,
+          userId: userId,
+          auctionsBiddedOn: [] // Initialize an empty array for bidded auctions
+        });
+
+        alert('Registration successful!');
         this.$router.push({ name: 'Profile' });
       } catch (error) {
         alert(`Error: ${error.message}`);

@@ -1,15 +1,14 @@
 <template>
   <div id="bidding-board">
-    <!-- Header Section -->
     <header class="bidding-board-header">
       <h1>Current Running Auctions</h1>
     </header>
 
-    <!-- Auction Cards -->
     <div class="container mt-5">
       <div class="row">
-        <div class="col-md-4" v-for="auction in runningAuctions" :key="auction.id">
-          <div class="card mb-4">
+        <!-- Iterate through running auctions -->
+        <div class="col-md-6" v-for="auction in runningAuctions" :key="auction.id">
+          <div v-if="auction && auction.id" class="card mb-4">
             <img :src="auction.horsePictures[0]" class="card-img-top" :alt="auction.horseName" />
             <div class="card-body">
               <h5 class="card-title">{{ auction.horseName }}</h5>
@@ -29,6 +28,17 @@
               <button @click="openBidModal(auction)" class="btn btn-success" :disabled="auction.timeRemaining <= 0">Bid Now</button>
             </div>
           </div>
+
+          <!-- Leaderboard Section -->
+          <div v-if="leaderboards[auction.id]" class="leaderboard mb-4">
+            <h5>Leaderboard</h5>
+            <ul v-if="leaderboards[auction.id] && leaderboards[auction.id].length > 0">
+              <li v-for="(bid, index) in leaderboards[auction.id]" :key="index">
+                {{ bid.username }} - ${{ bid.amount }}
+              </li>
+            </ul>
+            <p v-else>No bids yet.</p>
+          </div>
         </div>
       </div>
     </div>
@@ -44,7 +54,6 @@
           <button @click="increaseBid">+{{ currentAuction.setIncrement }}</button>
         </div>
         <p>Total Amount: {{ currentBid }} {{ currency }}</p>
-        <p>Direct bid - Your bid will be set immediately</p>
         <button @click="placeBid" class="btn btn-primary">Place a direct bid of {{ currentBid }} {{ currency }}</button>
 
         <!-- Automatic Bidding Section -->
@@ -60,8 +69,11 @@
     </div>
   </div>
 </template>
+
+
+
 <script>
-import { collection, getDocs, doc, updateDoc, getDoc, arrayUnion, setDoc } from 'firebase/firestore'; // Firestore functions
+import { collection, getDocs, doc, updateDoc, getDoc, arrayUnion, setDoc, query, orderBy } from 'firebase/firestore'; // Firestore functions
 import { auth, db } from '@/firebase'; // Firebase Firestore instance
 
 export default {
@@ -72,9 +84,10 @@ export default {
       showBidModal: false,
       currentAuction: null,
       currentBid: 0,
-      maxAutoBid: 0, // To track the user's maximum automatic bid
+      maxAutoBid: 0,
       currency: 'eu',
-      autoBidInterval: null, // To handle automatic bidding
+      autoBidInterval: null,
+      leaderboards: {}, // To store leaderboard data for each auction
     };
   },
   computed: {
@@ -103,10 +116,32 @@ export default {
         console.error('Error fetching auctions:', error);
       }
     },
+    async fetchLeaderboard(auctionId) {
+      try {
+        const bidsRef = collection(db, 'Auctions', auctionId, 'bids');
+        const bidsQuery = query(bidsRef, orderBy('bidTime', 'desc')); // Order by the last bid time
+        const bidsSnapshot = await getDocs(bidsQuery);
+
+        const bids = await Promise.all(bidsSnapshot.docs.map(async bidDoc => {
+          const bidData = bidDoc.data();
+          const userDoc = await getDoc(doc(db, 'users', bidData.userId));
+          const username = userDoc.exists() ? userDoc.data().username : 'Unknown User';
+          return {
+            username,
+            amount: bidData.amount,
+          };
+        }));
+
+        // Save leaderboard data
+        this.$set(this.leaderboards, auctionId, bids);
+      } catch (error) {
+        console.error('Error fetching leaderboard:', error);
+      }
+    },
     openBidModal(auction) {
       this.currentAuction = auction;
       this.currentBid = auction.currentBid || auction.startingPrice;
-      this.maxAutoBid = 0; // Reset the automatic bid input
+      this.maxAutoBid = 0;
       this.showBidModal = true;
     },
     closeBidModal() {
@@ -128,7 +163,6 @@ export default {
         const auctionData = auctionSnapshot.data();
         const existingBid = auctionData.currentBid || auctionData.startingPrice;
 
-        // Calculate the new bid
         const newBid = existingBid + (this.currentBid - existingBid);
         const bidTime = new Date();
 
@@ -136,71 +170,25 @@ export default {
         await updateDoc(auctionDoc, {
           currentBid: newBid,
           lastBidPlacedAt: bidTime,
-          highestBidder: auth.currentUser.uid, // Set the highest bidder
+          highestBidder: auth.currentUser.uid,
         });
 
-        // Now update the 'bidders' collection to track the auctions the user has bid on
-        const userId = auth.currentUser.uid;
-        const bidderDocRef = doc(db, 'bidders', userId);
-        const bidderDoc = await getDoc(bidderDocRef);
+        // Store the bid in the `bids` collection for the auction
+        const bidDocRef = doc(collection(db, 'Auctions', this.currentAuction.id, 'bids'));
+        await setDoc(bidDocRef, {
+          userId: auth.currentUser.uid,
+          amount: newBid,
+          bidTime: bidTime,
+        });
 
-        if (bidderDoc.exists()) {
-          // If the bidder document exists, update it by adding the auctionId (ensure no duplicates)
-          await updateDoc(bidderDocRef, {
-            auctionIds: arrayUnion(this.currentAuction.id), // Add auction ID if not already present
-          });
-        } else {
-          // If the bidder document doesn't exist, create it
-          await setDoc(bidderDocRef, {
-            auctionIds: [this.currentAuction.id], // Create with the current auction ID
-          });
-        }
+        // Update the leaderboard
+        await this.fetchLeaderboard(this.currentAuction.id);
 
-        this.closeBidModal(); // Close the modal after placing the bid
-        await this.fetchAuctions(); // Refresh auction data after placing the bid
+        this.closeBidModal();
+        await this.fetchAuctions();
       } catch (error) {
         console.error('Error placing bid:', error);
       }
-    },    // Set the maximum automatic bid for the user
-    async setAutoBid() {
-      try {
-        if (this.maxAutoBid <= this.currentBid) {
-          alert("Max bid must be greater than the current bid.");
-          return;
-        }
-
-        const auctionDoc = doc(db, 'Auctions', this.currentAuction.id);
-
-        await updateDoc(auctionDoc, {
-          autoBidder: auth.currentUser.uid,
-          maxAutoBid: this.maxAutoBid,
-        });
-
-        alert(`Automatic bid of max ${this.maxAutoBid} ${this.currency} has been set.`);
-        this.autoBid();
-      } catch (error) {
-        console.error('Error setting automatic bid:', error);
-      }
-    },
-    // Handle automatic bidding logic
-    async autoBid() {
-      this.autoBidInterval = setInterval(async () => {
-        const auctionDoc = doc(db, 'Auctions', this.currentAuction.id);
-        const auctionSnapshot = await getDoc(auctionDoc);
-        const auctionData = auctionSnapshot.data();
-        const existingBid = auctionData.currentBid || auctionData.startingPrice;
-
-        if (auctionData.autoBidder === auth.currentUser.uid && auctionData.maxAutoBid > existingBid) {
-          const newAutoBid = existingBid + 1;
-          await updateDoc(auctionDoc, {
-            currentBid: newAutoBid,
-            lastBidPlacedAt: new Date(),
-            highestBidder: auth.currentUser.uid,
-          });
-        } else if (auctionData.maxAutoBid <= existingBid) {
-          clearInterval(this.autoBidInterval); // Stop auto-bidding when max bid is reached
-        }
-      }, 3000); // Check every 3 seconds to place a bid
     },
     startCountdown() {
       this.timer = setInterval(() => {
@@ -238,16 +226,17 @@ export default {
     this.timer = setInterval(() => {
       this.auctions.forEach(auction => {
         auction.timeRemaining = this.calculateTimeRemaining(auction.endAuction);
+        // Fetch the leaderboard for each auction
+        this.fetchLeaderboard(auction.id);
       });
     }, 1000);
   },
   beforeUnmount() {
     clearInterval(this.timer);
-    clearInterval(this.autoBidInterval); // Clear automatic bidding when the component is destroyed
+    clearInterval(this.autoBidInterval);
   },
 };
 </script>
-
 
 
 <!-- Add the following styles for the modal -->
