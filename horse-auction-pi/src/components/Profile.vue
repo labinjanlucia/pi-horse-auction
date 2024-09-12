@@ -26,8 +26,16 @@
                 <h5 class="card-title">{{ auction.horseName }}</h5>
                 <p class="card-text"><strong>Start Bid:</strong> ${{ auction.startingPrice }}</p>
                 <p class="card-text"><strong>Current Bid:</strong> ${{ auction.currentBid }}</p>
-                <p class="card-text"><strong>Time Left:</strong> {{ countdown(auction.endAuction) }}</p>
-                
+                <!-- Display Time Left or Start Date -->
+                <p class="card-text">
+                  <strong v-if="new Date(auction.startAuction) <= today">Time Left:</strong> 
+                  <strong v-else>Start Date:</strong>
+                  <span v-if="new Date(auction.startAuction) <= today">
+                    {{ countdown(auction.endAuction) }}
+                  </span>
+                  <span v-else>{{ formatDate(auction.startAuction) }}</span>
+                </p>
+
                 <!-- View Details button -->
                 <button @click="viewDetails(auction.id)" class="btn btn-primary">View Details</button>
               </div>
@@ -55,11 +63,18 @@
                 <!-- Display horse name -->
                 <h5 class="card-title">{{ auction.horseName }}</h5>
 
-                <!-- Display the starting bid -->
-                <p class="card-text"><strong>Current Bid:</strong> ${{ auction.currentBid}}</p>
+                <!-- Display the current bid -->
+                <p class="card-text"><strong>Current Bid:</strong> ${{ auction.currentBid }}</p>
 
-                <!-- Display the countdown timer -->
-                <p class="card-text"><strong>Time Left:</strong> {{ auction.remainingTime }}</p>
+                <!-- Display Time Left or Start Date -->
+                <p class="card-text">
+                  <strong v-if="new Date(auction.startAuction) <= today">Time Left:</strong> 
+                  <strong v-else>Start Date:</strong>
+                  <span v-if="new Date(auction.startAuction) <= today">
+                    {{ countdown(auction.endAuction) }}
+                  </span>
+                  <span v-else>{{ formatDate(auction.startAuction) }}</span>
+                </p>
 
                 <!-- View Details button -->
                 <button @click="viewDetails(auction.id)" class="btn btn-primary">View Details</button>
@@ -75,6 +90,7 @@
   </div>
 </template>
 
+
 <script>
 import { signOut } from 'firebase/auth';  // Import Firebase signOut
 import { auth } from '@/firebase';  // Import Firebase auth
@@ -85,7 +101,8 @@ export default {
   data() {
     return {
       yourAuctions: [],
-      biddedAuctions: [] // Array to hold the user's auctions
+      biddedAuctions: [], // Array to hold the user's auctions
+      today: new Date() // Define today's date
     };
   },
   mounted() {
@@ -159,7 +176,7 @@ export default {
     // Add formatDate method
     formatDate(date) {
       if (!date) return 'No bids yet';
-      const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+      const options = { year: 'numeric', month: 'long', day: 'numeric' };
       return new Date(date).toLocaleDateString(undefined, options);
     },
     async fetchBiddedAuctions() {
@@ -185,7 +202,6 @@ export default {
   }
 };
 </script>
-
 
 
 
