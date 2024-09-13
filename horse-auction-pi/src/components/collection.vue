@@ -22,6 +22,9 @@
           <p class="card-text"><strong>Current Bid:</strong> ${{ auction.currentBid }}</p>
           <p class="card-text"><strong>Time Left:</strong> {{ auction.remainingTime }}</p>
           <button @click="viewDetails(auction.id)" class="btn btn-primary">View Details</button>
+                  <!-- Admin-only delete button -->
+                  <button v-if="isAdmin" @click="deleteAuction(auction.id)" class="btn btn-danger">Delete Auction</button>
+
         </div>
       </div>
     </section>
@@ -48,8 +51,8 @@
 </template>
 
 <script>
-import { collection, getDocs } from 'firebase/firestore';  // Firestore functions
-import { db } from '@/firebase';  // Firebase Firestore instance
+import { collection, getDocs, deleteDoc, doc, getDoc } from 'firebase/firestore';  // Firestore functions
+import { db, auth } from '@/firebase';  // Firebase Firestore instance
 
 export default {
   data() {
@@ -58,14 +61,42 @@ export default {
       currentAuctions: [],  // Auctions currently running
       futureAuctions: [],  // Auctions scheduled for the future
       selectedAuctionType: 'current',  // Filter state (current or future)
+      isAdmin: false,  // To track if the user is an admin
+
     };
   },
   async mounted() {
     await this.fetchAuctionsFromFirestore();  // Fetch auctions from Firestore on mount
     this.filterAuctions();  // Filter auctions into current and future
     this.startCountdown();  // Start countdown timer for current auctions
+    await this.checkAdminStatus(); 
   },
   methods: {
+    async checkAdminStatus() {
+      try {
+        const user = auth.currentUser;
+        if (user) {
+          const userRef = doc(db, 'users', user.uid);
+          const userSnap = await getDoc(userRef);
+
+          if (userSnap.exists()) {
+            this.isAdmin = userSnap.data().isAdmin || false; // Check the isAdmin field
+          }
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+      }
+    },
+    async deleteAuction(auctionId) {
+      try {
+        await deleteDoc(doc(db, 'Auctions', auctionId));
+        this.auctions = this.auctions.filter(auction => auction.id !== auctionId); // Remove from list
+        this.filterAuctions(); // Refresh the list
+      } catch (error) {
+        console.error('Error deleting auction:', error);
+      }
+    },
+
     // Fetch auctions from Firestore
     async fetchAuctionsFromFirestore() {
       try {
