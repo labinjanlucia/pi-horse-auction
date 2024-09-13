@@ -63,6 +63,7 @@ export default {
       selectedAuctionType: 'current',  // Filter state (current or future)
       isAdmin: false,  // To track if the user is an admin
 
+
     };
   },
   async mounted() {

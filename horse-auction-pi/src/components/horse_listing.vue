@@ -61,6 +61,23 @@
           </div>
         </div>
       </section>
+      <!-- Google Maps Section -->
+      <section class="horse-location mt-5">
+        <div class="container">
+          <h3>Location</h3>
+          <div class="google-maps">
+            <iframe 
+              v-if="horse.lat && horse.long"
+              width="100%" 
+              height="300" 
+              frameborder="0" 
+              style="border:0" 
+              :src="`https://www.google.com/maps/embed/v1/view?key=AIzaSyD27h-Dt06ZPv10rXmKRphln15ZtB0LAHg&center=${horse.lat},${horse.long}&zoom=14`" 
+              allowfullscreen>
+            </iframe>
+          </div>
+        </div>
+      </section>
 
       <!-- Description Section -->
       <section class="horse-description mt-5 mb-5">
@@ -182,5 +199,11 @@ export default {
     font-size: 18px;
     color: #555;
   }
+  .google-maps iframe {
+  border: 0;
+  width: 100%;
+  height: 300px;
+}
+
   </style>
   
