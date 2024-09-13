@@ -74,6 +74,16 @@
           <input type="number" v-model="form.setIncrement" id="setIncrement" required min="1" />
         </div>
       </section>
+      <div class="form-group">
+  <label for="latitude">Latitude:</label>
+  <input type="number" v-model="form.latitude" id="latitude" step="any" required />
+</div>
+
+<div class="form-group">
+  <label for="longitude">Longitude:</label>
+  <input type="number" v-model="form.longitude" id="longitude" step="any" required />
+</div>
+
 
       <!-- File Upload Section for Documents -->
       <section class="file-upload">
@@ -141,6 +151,9 @@ export default {
         currentBid: 1,
         auctionOwner: "",
         highestBidder: "",
+        latitude: "",    // Add latitude field
+  longitude: "",   // Add longitude field
+
       },
       uploadedHorsePictures: [],
       uploadedDocuments: [],
@@ -186,6 +199,8 @@ export default {
           gender: this.form.gender,      // Added gender
           size: this.form.size,          // Added size
           dob: this.form.dob,            // Added date of birth
+          lat: this.form.latitude,  // Save latitude
+  long: this.form.longitude, // Save longitude
           startAuction: this.form.startAuction,
           endAuction: this.form.endAuction,
           startingPrice: this.form.startingPrice,
