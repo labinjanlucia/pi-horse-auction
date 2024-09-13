@@ -125,10 +125,11 @@
 </template>
 
 <script>
-import { signOut } from 'firebase/auth';  
+import { signOut, getAuth } from 'firebase/auth';  
 import { auth } from '@/firebase';  
 import { db } from '@/firebase';  
 import { collection, query, where, getDocs, getDoc, doc, updateDoc } from 'firebase/firestore';  
+import router from '@/router';
 
 export default {
   data() {
@@ -144,20 +145,32 @@ export default {
       wonAuctions: [],
     };
   },
+  
   async mounted() {
-    // Wait for all data to be fetched before showing the UI
-    await this.fetchUsername(); 
+
+    if (!auth.currentUser){
+      this.$router.push('/login');
+
+
+  }
+  else {
+        // Wait for all data to be fetched before showing the UI
+        await this.fetchUsername(); 
     await this.fetchUserAuctions();  
     await this.fetchBiddedAuctions();
-    
     this.startRealTimeCountdown(); // Start real-time countdown
     this.loading = false;
-    this.fetchWonAuctions(); // Fetch won auctions
+     // Fetch won auctions
+    this.fetchWonAuctions();
+
+  }
+
   },
   beforeUnmount() {
     if (this.timer) clearInterval(this.timer);
   },
   methods: {
+
     async fetchUsername() {
       try {
         const userId = auth.currentUser.uid;

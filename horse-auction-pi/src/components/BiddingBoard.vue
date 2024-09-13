@@ -28,7 +28,7 @@
               </p>
 
               <button @click="viewDetails(auction.id)" class="btn btn-primary mb-2" :disabled="auction.timeRemaining <= 0">View Details</button>
-              <button @click="openBidModal(auction)" class="btn btn-success" :disabled="auction.timeRemaining <= 0">Bid Now</button>
+              <button v-if="isUserLoggedIn" @click="openBidModal(auction)" class="btn btn-success" :disabled="auction.timeRemaining <= 0">Bid Now</button>
             </div>
           </div>
 
@@ -66,6 +66,8 @@
 <script>
 import { collection, getDocs, doc, updateDoc, getDoc, setDoc, query, orderBy, deleteDoc } from 'firebase/firestore'; 
 import { auth, db } from '@/firebase'; 
+import { onAuthStateChanged } from "firebase/auth";
+
 
 export default {
   name: "BiddingBoard",
@@ -88,8 +90,19 @@ export default {
     }
   },
   methods: {
+    checkLogin(){
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          this.isUserLoggedIn = true;
+        }
+        else{
+          this.isUserLoggedIn = false;
+        }
+      });
+    },
     async fetchAuctions() {
       try {
+        this.checkLogin();
         const auctionsRef = collection(db, 'Auctions');
         const querySnapshot = await getDocs(auctionsRef);
         this.auctions = querySnapshot.docs.map((doc) => {
