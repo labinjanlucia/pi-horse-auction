@@ -6,7 +6,6 @@
 
     <div class="container mt-5">
       <div class="row">
-        <!-- Iterate through running auctions -->
         <div class="col-md-6" v-for="auction in runningAuctions" :key="auction.id">
           <div v-if="auction && auction.id" class="card mb-4">
             <img :src="auction.horsePictures[0]" class="card-img-top" :alt="auction.horseName" />
@@ -34,7 +33,6 @@
             </div>
           </div>
 
-          <!-- Leaderboard Section -->
           <div v-if="leaderboards[auction.id]" class="leaderboard mb-4">
             <h5>Leaderboard</h5>
             <ul v-if="leaderboards[auction.id] && leaderboards[auction.id].length > 0">
@@ -48,7 +46,6 @@
       </div>
     </div>
 
-    <!-- Bid Modal -->
     <div v-if="showBidModal" class="bid-modal">
       <div class="bid-modal-content">
         <h3>{{ currentAuction.horseName }}</h3>
@@ -68,8 +65,8 @@
 </template>
 
 <script>
-import { collection, getDocs, doc, updateDoc, getDoc, setDoc, query, orderBy } from 'firebase/firestore'; // Firestore functions
-import { auth, db } from '@/firebase'; // Firebase Firestore instance
+import { collection, getDocs, doc, updateDoc, getDoc, setDoc, query, orderBy } from 'firebase/firestore'; 
+import { auth, db } from '@/firebase'; 
 
 export default {
   name: "BiddingBoard",
@@ -80,10 +77,9 @@ export default {
       currentAuction: null,
       currentBid: 0,
       currency: 'eu',
-      leaderboards: {}, // To store leaderboard data for each auction
-      yourAuctions: [],  // Initialize as an empty array
-    biddedAuctions: [],  // Initialize as an empty array
-
+      leaderboards: {}, 
+      yourAuctions: [],  
+      biddedAuctions: [],  
     };
   },
   computed: {
@@ -94,30 +90,64 @@ export default {
   },
   methods: {
     async fetchAuctions() {
-  try {
-    const auctionsRef = collection(db, 'Auctions');
-    const querySnapshot = await getDocs(auctionsRef);
-    this.auctions = querySnapshot.docs.map((doc) => {
-      const auction = doc.data();
+      try {
+        const auctionsRef = collection(db, 'Auctions');
+        const querySnapshot = await getDocs(auctionsRef);
+        this.auctions = querySnapshot.docs.map((doc) => {
+          const auction = doc.data();
+          if (auction.status === 'completed') {
+            return null;
+          }
 
-      return {
-        id: doc.id,
-        ...auction,
-        startAuction: new Date(auction.startAuction),
-        endAuction: new Date(auction.endAuction),
-        timeRemaining: this.calculateTimeRemaining(new Date(auction.endAuction)),
-        highestBidderName: auction.highestBidderName || 'N/A', // Use the stored highest bidder name
-      };
-    });
-    this.startCountdown();
-  } catch (error) {
-    console.error('Error fetching auctions:', error);
-  }
-},
+          return {
+            id: doc.id,
+            ...auction,
+            startAuction: new Date(auction.startAuction),
+            endAuction: new Date(auction.endAuction),
+            timeRemaining: this.calculateTimeRemaining(new Date(auction.endAuction)),
+            highestBidderName: auction.highestBidderName || 'N/A', 
+          };
+        }).filter(auction => auction !== null);
+        this.startCountdown();
+      } catch (error) {
+        console.error('Error fetching auctions:', error);
+      }
+    },
+
+    async handleAuctionEnd(auction) {
+      try {
+        const auctionDoc = doc(db, 'Auctions', auction.id);
+
+        if (!auction.highestBidder) {
+          console.log("No bids placed. Auction has ended without a winner.");
+          return;
+        }
+
+        const userWonAuctionsRef = doc(db, 'users', auction.highestBidder, 'wonAuctions', auction.id);
+        await setDoc(userWonAuctionsRef, {
+          horseName: auction.horseName,
+          horsePictures: auction.horsePictures,
+          winningBid: auction.currentBid,
+          wonAt: new Date(),
+        });
+
+        await updateDoc(auctionDoc, {
+          status: 'completed',
+          winner: auction.highestBidder,  
+        });
+
+        this.auctions = this.auctions.filter(a => a.id !== auction.id);
+
+        console.log(`Auction ${auction.horseName} has ended. Winner: ${auction.highestBidderName}`);
+      } catch (error) {
+        console.error('Error handling auction end:', error);
+      }
+    },
+
     async fetchLeaderboard(auctionId) {
       try {
         const bidsRef = collection(db, 'Auctions', auctionId, 'bids');
-        const bidsQuery = query(bidsRef, orderBy('bidTime', 'desc')); // Order by the last bid time
+        const bidsQuery = query(bidsRef, orderBy('bidTime', 'desc')); 
         const bidsSnapshot = await getDocs(bidsQuery);
 
         const bids = await Promise.all(bidsSnapshot.docs.map(async bidDoc => {
@@ -130,12 +160,12 @@ export default {
           };
         }));
 
-        // Save leaderboard data
         this.$set(this.leaderboards, auctionId, bids);
       } catch (error) {
         console.error('Error fetching leaderboard:', error);
       }
     },
+
     openBidModal(auction) {
       this.currentAuction = auction;
       this.currentBid = auction.currentBid || auction.startingPrice;
@@ -153,70 +183,65 @@ export default {
         this.currentBid -= this.currentAuction.setIncrement;
       }
     },
+
     async placeBid() {
-  try {
-    const auctionDoc = doc(db, 'Auctions', this.currentAuction.id);
-    const auctionSnapshot = await getDoc(auctionDoc);
-    const auctionData = auctionSnapshot.data();
-    const existingBid = auctionData.currentBid || auctionData.startingPrice;
+      try {
+        const auctionDoc = doc(db, 'Auctions', this.currentAuction.id);
+        const auctionSnapshot = await getDoc(auctionDoc);
+        const auctionData = auctionSnapshot.data();
+        const existingBid = auctionData.currentBid || auctionData.startingPrice;
 
-    // Ensure the current bid is higher than the existing bid
-    if (this.currentBid <= existingBid) {
-      alert("Your bid must be higher than the current bid.");
-      return;
-    }
+        if (this.currentBid <= existingBid) {
+          alert("Your bid must be higher than the current bid.");
+          return;
+        }
 
-    const newBid = this.currentBid; // Use the current bid chosen by the user
-    const bidTime = new Date();
+        const newBid = this.currentBid; 
+        const bidTime = new Date();
 
-    // Get the current user's UID
-    const userId = auth.currentUser.uid;
+        const userId = auth.currentUser.uid;
+        const userDoc = await getDoc(doc(db, 'users', userId));
+        if (!userDoc.exists()) {
+          throw new Error("User data not found.");
+        }
+        const username = userDoc.data().username || 'Unknown User';
 
-    // Fetch the user's username from the 'users' collection
-    const userDoc = await getDoc(doc(db, 'users', userId));
-    if (!userDoc.exists()) {
-      throw new Error("User data not found.");
-    }
-    const username = userDoc.data().username || 'Unknown User';
+        await updateDoc(auctionDoc, {
+          currentBid: newBid,
+          lastBidPlacedAt: bidTime,
+          highestBidder: userId,
+          highestBidderName: username, 
+        });
 
-    // Update the auction with the new highest bid, highest bidder (UID), and highestBidderName (username)
-    await updateDoc(auctionDoc, {
-      currentBid: newBid,
-      lastBidPlacedAt: bidTime,
-      highestBidder: userId,
-      highestBidderName: username, // Store the highest bidder's name directly in the auction
-    });
+        const bidDocRef = doc(collection(db, 'Auctions', this.currentAuction.id, 'bids'));
+        await setDoc(bidDocRef, {
+          userId,
+          amount: newBid,
+          bidTime: bidTime,
+        });
 
-    // Store the bid in the `bids` collection for the auction
-    const bidDocRef = doc(collection(db, 'Auctions', this.currentAuction.id, 'bids'));
-    await setDoc(bidDocRef, {
-      userId,
-      amount: newBid,
-      bidTime: bidTime,
-    });
+        this.closeBidModal();
+        await this.fetchAuctions();
+      } catch (error) {
+        console.error('Error placing bid:', error);
+        alert('There was an error placing your bid. Please try again.');
+      }
+    },
 
-    // Fetch the updated leaderboard after placing the bid
-    //await this.fetchLeaderboard(this.currentAuction.id);
-
-    // Close the modal after successfully placing the bid
-    this.closeBidModal();
-
-    // Fetch updated auctions to refresh the UI
-    await this.fetchAuctions();
-  } catch (error) {
-    console.error('Error placing bid:', error);
-    alert('There was an error placing your bid. Please try again.');
-  }
-}
-,
     startCountdown() {
       this.timer = setInterval(() => {
-        this.auctions = this.auctions.map(auction => ({
-          ...auction,
-          timeRemaining: this.calculateTimeRemaining(auction.endAuction),
-        }));
+        this.auctions = this.auctions.map(auction => {
+          auction.timeRemaining = this.calculateTimeRemaining(auction.endAuction);
+          
+          if (auction.timeRemaining === 0) {
+            this.handleAuctionEnd(auction);
+          }
+
+          return auction;
+        });
       }, 1000);
     },
+
     calculateTimeRemaining(endDate) {
       const now = new Date().getTime();
       const end = new Date(endDate).getTime();
@@ -236,6 +261,7 @@ export default {
       const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
       return new Date(date).toLocaleDateString(undefined, options);
     },
+
     viewDetails(auctionId) {
       this.$router.push({ name: 'HorseListing', params: { id: auctionId } });
     },
@@ -245,8 +271,6 @@ export default {
     this.timer = setInterval(() => {
       this.auctions.forEach(auction => {
         auction.timeRemaining = this.calculateTimeRemaining(auction.endAuction);
-        // Fetch the leaderboard for each auction
-        //this.fetchLeaderboard(auction.id);
       });
     }, 1000);
   },

@@ -37,6 +37,16 @@
         <button @click="logout" class="btn btn-outline-danger">Log out</button>
       </div>
 
+      <div v-if="wonAuctions.length > 0">
+  <h3>Won Auctions</h3>
+  <ul>
+    <li v-for="auction in wonAuctions" :key="auction.id">
+      <strong>{{ auction.horseName }}</strong> - Winning Bid: ${{ auction.winningBid }}
+    </li>
+  </ul>
+</div>
+<p v-else>No auctions won yet.</p>
+
       <!-- Bidded Auctions Section -->
       <section class="bidded-auctions mt-5">
         <h2>Bidded Auctions</h2>
@@ -118,6 +128,7 @@ export default {
       today: new Date(),
       loading: true, 
       timer: null,
+      wonAuctions: [],
     };
   },
   async mounted() {
@@ -127,7 +138,8 @@ export default {
     await this.fetchBiddedAuctions();
     
     this.startRealTimeCountdown(); // Start real-time countdown
-    this.loading = false; // Set loading to false after data has been fetched
+    this.loading = false;
+    this.fetchWonAuctions(); // Set loading to false after data has been fetched
   },
   beforeUnmount() {
     if (this.timer) clearInterval(this.timer);
@@ -164,6 +176,17 @@ export default {
         console.error('Error updating username:', error);
       }
     },
+    async fetchWonAuctions() {
+      try {
+        const userId = this.$auth.currentUser.uid; // Assuming you're using Firebase auth
+        const wonAuctionsRef = this.$db.collection('users').doc(userId).collection('wonAuctions');
+        const snapshot = await wonAuctionsRef.get();
+        this.wonAuctions = snapshot.docs.map(doc => doc.data());
+      } catch (error) {
+        console.error('Error fetching won auctions:', error);
+      }
+    
+},
     async fetchUserAuctions() {
       const userId = auth.currentUser.uid;
       const auctionsRef = collection(db, 'Auctions');
