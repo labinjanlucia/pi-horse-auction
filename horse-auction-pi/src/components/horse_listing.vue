@@ -39,6 +39,7 @@
                 <li class="list-group-item"><strong>Breed:</strong> {{ horse.breed }}</li>
                 <li class="list-group-item"><strong>Color:</strong> {{ horse.color }}</li>
                 <li class="list-group-item"><strong>Size:</strong> {{ horse.size }} cm</li>
+                <li v-if="this.auctionEnded" class="list-group-item"><strong>Contact:</strong> {{horse.contact }}</li>
                 
                 <!-- Documents -->
                 <li class="list-group-item">
@@ -82,8 +83,10 @@ export default {
       horse: null,  // The horse object will be fetched from Firestore
       loading: true,  // For loading state
       error: null,  // For error state
+      auctionEnded: false,
     };
   },
+
   methods: {
     async fetchHorseDetails(horseId) {
       this.loading = true; // Start loading
@@ -95,6 +98,9 @@ export default {
 
         if (horseSnap.exists()) {
           this.horse = horseSnap.data();  // Set the horse data from Firestore
+          if (this.horse.status == "completed"){
+            this.auctionEnded = true;
+          }
         } else {
           this.error = "Horse not found!";
         }

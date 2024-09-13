@@ -196,6 +196,7 @@ export default {
           currentBid: this.form.startingPrice,
           auctionOwner: user.uid,
           highestBidder: user.uid,
+          contact: user.email,
         });
 
         // Show success popup
