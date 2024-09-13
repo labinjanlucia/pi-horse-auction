@@ -110,8 +110,8 @@ export default {
           auction.endAuction = new Date(auction.endAuction);
           auction.lastBidPlacedAt = auction.lastBidPlacedAt ? new Date(auction.lastBidPlacedAt) : null;
 
-          // Only push auctions that are currently running (startAuction <= today)
-          if (auction.startAuction <= today) {
+           // Only push auctions that are currently running (startAuction <= today and endAuction > today)
+           if (auction.startAuction <= today && auction.endAuction > today) {
             auctionsData.push({ id: doc.id, ...auction });
           }
         });

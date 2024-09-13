@@ -29,14 +29,19 @@
     <!-- Future Auctions -->
     <section v-if="selectedAuctionType === 'future'">
       <h2>Future Auctions</h2>
-      <div v-for="(auction, index) in futureAuctions" :key="index" class="auction-card">
-        <img :src="getHorseImage(auction)" alt="Horse Image" class="card-img-top">
-        <div class="card-body">
-          <h5 class="card-title">{{ auction.horseName }}</h5>
-          <p class="card-text"><strong>Starting Bid:</strong> ${{ auction.currentBid }}</p>
-          <p class="card-text"><strong>Start Date:</strong> {{ auction.startAuction }}</p>
-          <button @click="viewDetails(auction.id)" class="btn btn-primary">View Details</button>
+      <div v-if="futureAuctions.length > 0">
+        <div v-for="(auction, index) in futureAuctions" :key="index" class="auction-card">
+          <img :src="getHorseImage(auction)" alt="Horse Image" class="card-img-top">
+          <div class="card-body">
+            <h5 class="card-title">{{ auction.horseName }}</h5>
+            <p class="card-text"><strong>Starting Bid:</strong> ${{ auction.currentBid }}</p>
+            <p class="card-text"><strong>Start Date:</strong> {{ auction.startAuction }}</p>
+            <button @click="viewDetails(auction.id)" class="btn btn-primary">View Details</button>
+          </div>
         </div>
+      </div>
+      <div v-else>
+        <p>There are no future auctions yet.</p> <!-- Message for empty future auctions -->
       </div>
     </section>
   </div>
@@ -77,16 +82,20 @@ export default {
     },
     // Filter auctions into current and future based on the auction start date
     filterAuctions() {
-      const today = new Date().toISOString().split('T')[0];  // Get today's date in YYYY-MM-DD format
+    const today = new Date(); // Get current date and time
 
-      if (this.selectedAuctionType === 'current') {
-        // Filter auctions where the start date is today or earlier (current auctions)
-        this.currentAuctions = this.auctions.filter(auction => auction.startAuction <= today);
-      } else {
-        // Filter auctions where the start date is in the future
-        this.futureAuctions = this.auctions.filter(auction => auction.startAuction > today);
-      }
-    },
+    if (this.selectedAuctionType === 'current') {
+      // Filter auctions where the start date is today or earlier and end date is in the future (current auctions)
+      this.currentAuctions = this.auctions.filter(auction => 
+        new Date(auction.startAuction) <= today && new Date(auction.endAuction) > today
+      );
+    } else {
+      // Filter auctions where the start date is in the future
+      this.futureAuctions = this.auctions.filter(auction => 
+        new Date(auction.startAuction) > today
+      );
+    }
+  },
     // Get the first horse image or a fallback image
     getHorseImage(auction) {
       // Check if there are pictures and return the first one, or a fallback

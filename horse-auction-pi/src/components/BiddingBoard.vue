@@ -23,7 +23,6 @@
               <p class="card-text">
                 <strong>Last Bid Placed At:</strong> {{ formatDate(auction.lastBidPlacedAt || auction.startAuction) }}
               </p>
-           
               <p class="card-text">
                 <strong>Highest Bidder:</strong> {{ auction.highestBidderName || "No bids yet" }}
               </p>
@@ -65,7 +64,7 @@
 </template>
 
 <script>
-import { collection, getDocs, doc, updateDoc, getDoc, setDoc, query, orderBy } from 'firebase/firestore'; 
+import { collection, getDocs, doc, updateDoc, getDoc, setDoc, query, orderBy, deleteDoc } from 'firebase/firestore'; 
 import { auth, db } from '@/firebase'; 
 
 export default {
@@ -123,6 +122,7 @@ export default {
           return;
         }
 
+        // Move auction to the highest bidder's profile under "wonAuctions"
         const userWonAuctionsRef = doc(db, 'users', auction.highestBidder, 'wonAuctions', auction.id);
         await setDoc(userWonAuctionsRef, {
           horseName: auction.horseName,
@@ -131,16 +131,36 @@ export default {
           wonAt: new Date(),
         });
 
+        // Update auction status to 'completed' and set the winner
         await updateDoc(auctionDoc, {
           status: 'completed',
           winner: auction.highestBidder,  
         });
 
+        // Remove auction from the active auctions list
         this.auctions = this.auctions.filter(a => a.id !== auction.id);
+
+        // Notify the user who bid but didn't win and remove it from their bidded auctions
+        await this.notifyLosers(auction);
 
         console.log(`Auction ${auction.horseName} has ended. Winner: ${auction.highestBidderName}`);
       } catch (error) {
         console.error('Error handling auction end:', error);
+      }
+    },
+
+    async notifyLosers(auction) {
+      const biddersRef = collection(db, 'Auctions', auction.id, 'bids');
+      const biddersSnapshot = await getDocs(biddersRef);
+      
+      const losers = biddersSnapshot.docs.filter(bidDoc => bidDoc.data().userId !== auction.highestBidder);
+      
+      for (const loser of losers) {
+        const loserId = loser.data().userId;
+        const userBiddedAuctionsRef = doc(db, 'users', loserId, 'biddedAuctions', auction.id);
+        
+        // Remove the auction from their "biddedAuctions" collection
+        await deleteDoc(userBiddedAuctionsRef);
       }
     },
 

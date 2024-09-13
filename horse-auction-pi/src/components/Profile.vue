@@ -37,15 +37,28 @@
         <button @click="logout" class="btn btn-outline-danger">Log out</button>
       </div>
 
-      <div v-if="wonAuctions.length > 0">
-  <h3>Won Auctions</h3>
-  <ul>
-    <li v-for="auction in wonAuctions" :key="auction.id">
-      <strong>{{ auction.horseName }}</strong> - Winning Bid: ${{ auction.winningBid }}
-    </li>
-  </ul>
-</div>
-<p v-else>No auctions won yet.</p>
+      <!-- Won Auctions Section -->
+      <div v-if="wonAuctions.length > 0" class="mt-5">
+        <h2>Won Auctions</h2>
+        <div class="row">
+          <div class="col-md-6" v-for="auction in wonAuctions" :key="auction.id">
+            <div class="card mb-4">
+              <img :src="auction.horsePictures[0]" class="card-img-top" :alt="auction.horseName" />
+              <div class="card-body">
+                <h5 class="card-title">{{ auction.horseName }}</h5>
+                <p class="card-text">
+                  <strong>Winning Bid:</strong> ${{ auction.winningBid }}
+                </p>
+                <p class="card-text">
+                  <strong>Auction Won At:</strong> {{ formatDate(auction.wonAt) }}
+                </p>
+                <button @click="viewDetails(auction.id)" class="btn btn-primary">View Details</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p v-else>No auctions won yet.</p>
 
       <!-- Bidded Auctions Section -->
       <section class="bidded-auctions mt-5">
@@ -139,7 +152,7 @@ export default {
     
     this.startRealTimeCountdown(); // Start real-time countdown
     this.loading = false;
-    this.fetchWonAuctions(); // Set loading to false after data has been fetched
+    this.fetchWonAuctions(); // Fetch won auctions
   },
   beforeUnmount() {
     if (this.timer) clearInterval(this.timer);
@@ -177,16 +190,30 @@ export default {
       }
     },
     async fetchWonAuctions() {
-      try {
-        const userId = this.$auth.currentUser.uid; // Assuming you're using Firebase auth
-        const wonAuctionsRef = this.$db.collection('users').doc(userId).collection('wonAuctions');
-        const snapshot = await wonAuctionsRef.get();
-        this.wonAuctions = snapshot.docs.map(doc => doc.data());
-      } catch (error) {
-        console.error('Error fetching won auctions:', error);
-      }
+  try {
+    const userId = auth.currentUser.uid;
+    const wonAuctionsRef = collection(db, 'users', userId, 'wonAuctions');
+    const wonAuctionsSnapshot = await getDocs(wonAuctionsRef);
     
-},
+    this.wonAuctions = wonAuctionsSnapshot.docs.map(doc => {
+      const auctionData = doc.data();
+
+      // Convert wonAt to a JavaScript Date object if it's a Firestore Timestamp
+      if (auctionData.wonAt && auctionData.wonAt.toDate) {
+        auctionData.wonAt = auctionData.wonAt.toDate();
+      }
+
+      return {
+        id: doc.id,
+        ...auctionData,
+      };
+    });
+  } catch (error) {
+    console.error('Error fetching won auctions:', error);
+  }
+
+
+    },
     async fetchUserAuctions() {
       const userId = auth.currentUser.uid;
       const auctionsRef = collection(db, 'Auctions');
@@ -198,21 +225,34 @@ export default {
       }));
     },
     async fetchBiddedAuctions() {
-      const userId = auth.currentUser.uid;
-      const bidderDocRef = doc(db, 'bidders', userId);
-      const bidderDoc = await getDoc(bidderDocRef);
+  const userId = auth.currentUser.uid;
+  const bidderDocRef = doc(db, 'bidders', userId);
+  const bidderDoc = await getDoc(bidderDocRef);
 
-      if (bidderDoc.exists()) {
-        const { auctionIds } = bidderDoc.data();
-        const auctionsRef = collection(db, 'Auctions');
-        const auctionsQuery = query(auctionsRef, where('__name__', 'in', auctionIds)); 
-        const querySnapshot = await getDocs(auctionsQuery);
+  if (bidderDoc.exists()) {
+    const { auctionIds } = bidderDoc.data();
+    const auctionsRef = collection(db, 'Auctions');
+    const auctionsQuery = query(auctionsRef, where('__name__', 'in', auctionIds)); 
+    const querySnapshot = await getDocs(auctionsQuery);
 
-        this.biddedAuctions = querySnapshot.docs.map(doc => ({
+    const today = new Date();
+
+    // Filter out ended auctions, but keep them if the user is the highest bidder
+    this.biddedAuctions = querySnapshot.docs
+      .map(doc => {
+        const auction = doc.data();
+        return {
           id: doc.id,
-          ...doc.data(),
-        }));
-      }
+          ...auction,
+        };
+      })
+      .filter(auction => {
+        // Check if the auction is still active or if the user is not the highest bidder
+        return new Date(auction.endAuction) > today || auction.highestBidder !== userId;
+      });
+  }
+
+
     },
     calculateTimeRemaining(endDate) {
       const now = new Date().getTime();
@@ -222,10 +262,11 @@ export default {
       const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+  
       return `${days}d : ${hours}h : ${minutes}m : ${seconds}s`;
     },
     startRealTimeCountdown() {
-      // Update remainingTime for each auction every second
       this.timer = setInterval(() => {
         this.yourAuctions = this.yourAuctions.map(auction => ({
           ...auction,
