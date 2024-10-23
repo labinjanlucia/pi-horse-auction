@@ -65,6 +65,6 @@
   </script>
   
   <style scoped>
-  /* Add any additional styling here if needed */
+
   </style>
   

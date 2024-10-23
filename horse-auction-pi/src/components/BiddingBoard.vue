@@ -314,7 +314,7 @@ export default {
 </script>
 
 
-<!-- Add the following styles for the modal -->
+
 <style scoped>
 .bid-modal {
   position: fixed;

@@ -140,9 +140,9 @@ export default {
         breed: "",
         age: "",
         color: "",
-        gender: "", // Added gender field
-        size: "",   // Added size field
-        dob: "",    // Added date of birth field
+        gender: "", 
+        size: "",   
+        dob: "",    
         startAuction: "",
         endAuction: "",
         startingPrice: 1,
@@ -151,8 +151,8 @@ export default {
         currentBid: 1,
         auctionOwner: "",
         highestBidder: "",
-        latitude: "",    // Add latitude field
-  longitude: "",   // Add longitude field
+        latitude: "",    
+  longitude: "",   
 
       },
       uploadedHorsePictures: [],
@@ -196,11 +196,11 @@ export default {
           breed: this.form.breed,
           age: this.form.age,
           color: this.form.color,
-          gender: this.form.gender,      // Added gender
-          size: this.form.size,          // Added size
-          dob: this.form.dob,            // Added date of birth
-          lat: this.form.latitude,  // Save latitude
-  long: this.form.longitude, // Save longitude
+          gender: this.form.gender,      
+          size: this.form.size,          
+          dob: this.form.dob,            
+          lat: this.form.latitude,  
+          long: this.form.longitude, 
           startAuction: this.form.startAuction,
           endAuction: this.form.endAuction,
           startingPrice: this.form.startingPrice,

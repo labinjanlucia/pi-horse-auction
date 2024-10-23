@@ -50,19 +50,7 @@
     data() {
       return {
         selectedAuctionType: 'current',
-        auctions: [
-          {
-            id: 1,
-            horseName: 'Fenix',
-            location: 'Zagreb, HR',
-            startingBid: 5000,
-            currentBid: null, // Set to null if no bids have been placed yet
-            endDate: '2024-04-15T12:00:00',
-            image: 'https://www.nzequestrian.org.nz/wp-content/uploads/Meg-Bisset-Freestyle-Twyst-Shout-winners-of-the-Country-TV-Pony-Grand-Prix-Photo-Credit-Elise-Ford-1-600x419.jpg',
-            timeRemaining: 100000 // Some value in milliseconds for countdown
-          },
-          // Other auctions...
-        ],
+       
         filteredAuctions: []
       };
     },

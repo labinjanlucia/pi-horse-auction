@@ -34,7 +34,7 @@ import { collection, doc, setDoc } from 'firebase/firestore'; // Import Firestor
 export default {
   data() {
     return {
-      username: '', // Username added
+      username: '', 
       email: '',
       password: '',
       confirmPassword: '',

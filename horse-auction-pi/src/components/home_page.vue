@@ -149,7 +149,7 @@ export default {
     this.startCountdownUpdate(); // Start continuously updating the countdown
   },
   beforeUnmount() {
-    // Clear intervals when component is destroyed to avoid memory leaks
+  
     clearInterval(this.countdownTimer);
   }
 };
@@ -160,7 +160,7 @@ export default {
 
 
 <style>
-/* General Styling */
+
 body {
   background-color: #f8f9fa;
 }
